@@ -14,6 +14,7 @@ This will compile both algorithms and create executables in their respective dir
 ## Task 1: Algorithm Comparison
 
 Run the comparison on the webdocs dataset:
+NOTE: download dataset from http://fimi.uantwerpen.be/data/webdocs.dat.gz (Too large to push on github sed)
 
 ```bash
 bash q1_1.sh <path_to_apriori> <path_to_fpgrowth> <path_to_dataset> <output_dir>
