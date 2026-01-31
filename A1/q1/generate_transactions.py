@@ -1,135 +1,141 @@
 #!/usr/bin/env python3
 """
-Generate a transactional dataset for Q1 Task-2.
+Synthetic transactional dataset generator for Apriori vs FP-Growth runtime behavior.
 
-Usage:
-  python3 generate_transactions.py <universal_itemset> <num_transactions> <output_file>
+Target qualitative behavior:
+- Apriori: high runtime at 10%, 25%, 50%; sharp drop at 90%
+- FP-Growth: consistently low runtime
 
-<universal_itemset> can be:
-  - a comma/space-separated list of items, OR
-  - a path to a file containing items (one per line or whitespace-separated)
+Core idea:
+- Inject a large correlated item block with ~60% support
+- Add medium-frequency combinatorial noise
+- Add rare items for realism
 """
 
-import sys
-import os
 import random
-from pathlib import Path
+import argparse
 
 
-def load_items(spec):
-    path = Path(spec)
-    if path.exists():
-        text = path.read_text()
-        tokens = text.replace(",", " ").split()
-    else:
-        tokens = spec.replace(",", " ").split()
+def generate_dataset(universal_itemset: int, num_transactions: int, output_file: str):
+    random.seed(42)
 
-    items = []
-    seen = set()
-    for t in tokens:
-        if t not in seen:
-            seen.add(t)
-            items.append(t)
-    return items
+    # -----------------------------
+    # Item universe
+    # -----------------------------
+    items = list(range(1, universal_itemset + 1))
+    random.shuffle(items)
 
+    # -----------------------------
+    # Partition universe
+    # -----------------------------
+    core_size = max(12, int(0.15 * universal_itemset))      # drives Apriori explosion
+    medium_size = int(0.35 * universal_itemset)
+    rare_size = universal_itemset - core_size - medium_size
 
-def build_clusters(items, rng):
-    n = len(items)
-    if n < 4:
-        return [], []
+    core_items = items[:core_size]
+    medium_items = items[core_size:core_size + medium_size]
+    rare_items = items[core_size + medium_size:]
 
-    k = max(3, min(10, n // 5))
-    clusters = []
-    for _ in range(k):
-        min_sz = 3
-        max_sz = min(12, n)
-        if max_sz < min_sz:
-            max_sz = min_sz
-        sz = rng.randint(min_sz, max_sz)
-        clusters.append(rng.sample(items, sz))
+    # -----------------------------
+    # Medium item groups (correlated noise)
+    # -----------------------------
+    random.shuffle(medium_items)
+    medium_groups = [
+        medium_items[i:i + 5]
+        for i in range(0, len(medium_items), 5)
+        if len(medium_items[i:i + 5]) == 5
+    ]
 
-    weights = [1.0 / (i + 1) for i in range(len(clusters))]
-    return clusters, weights
+    transactions = []
 
+    # -----------------------------
+    # Transaction generation
+    # -----------------------------
+    for _ in range(num_transactions):
+        T = set()
 
-def choose_length(n_items, rng):
-    if n_items <= 5:
-        return max(2, n_items)
-    r = rng.random()
-    if r < 0.10:
-        return min(n_items, rng.randint(3, 5))
-    if r < 0.70:
-        return min(n_items, rng.randint(6, 12))
-    return min(n_items, rng.randint(12, 20))
+        # ---- CORE BLOCK (critical) ----
+        # Survives 10/25/50%, dies at 90%
+        if random.random() < 0.7:
+            T.update(core_items)
+        else:
+            # partial core inclusion
+            for item in core_items:
+                if random.random() < 0.2:
+                    T.add(item)
 
+        # ---- MEDIUM ITEMS ----
+        # Adds combinatorial candidates
+        if random.random() < 0.5 and medium_groups:
+            group = random.choice(medium_groups)
+            k = random.randint(2, 4)
+            T.update(random.sample(group, k))
+        else:
+            for item in random.sample(medium_items, min(3, len(medium_items))):
+                if random.random() < 0.3:
+                    T.add(item)
 
-def generate_transaction(items, clusters, cluster_weights, item_weights, rng):
-    n = len(items)
-    length = choose_length(n, rng)
+        # ---- RARE ITEMS ----
+        if rare_items and random.random() < 0.1:
+            T.add(random.choice(rare_items))
 
-    chosen = set()
-    if clusters:
-        cluster = rng.choices(clusters, weights=cluster_weights, k=1)[0]
-        min_pick = 2 if len(cluster) >= 2 else 1
-        max_pick = max(min_pick, min(len(cluster), max(2, length // 2)))
-        pick = rng.randint(min_pick, max_pick)
-        chosen.update(rng.sample(cluster, pick))
+        # ---- SAFETY: non-empty ----
+        if not T:
+            T.add(random.choice(core_items))
 
-    while len(chosen) < length:
-        item = rng.choices(items, weights=item_weights, k=1)[0]
-        chosen.add(item)
+        transactions.append(sorted(T))
 
-    # Preserve item order as per universe
-    return [it for it in items if it in chosen]
+    # -----------------------------
+    # Write dataset
+    # -----------------------------
+    with open(output_file, "w") as f:
+        for t in transactions:
+            f.write(" ".join(map(str, t)) + "\n")
+
+    # -----------------------------
+    # Diagnostics (useful for report)
+    # -----------------------------
+    item_counts = {}
+    for t in transactions:
+        for i in t:
+            item_counts[i] = item_counts.get(i, 0) + 1
+
+    def pct(x): return 100 * x / num_transactions
+
+    print(f"Dataset written to {output_file}")
+    print(f"Transactions: {num_transactions}")
+    print(f"Items: {universal_itemset}")
+    print(f"Core block size: {core_size}")
+    print(f"Average transaction length: {sum(len(t) for t in transactions)/num_transactions:.2f}")
+
+    freq_bins = {
+        "<5%": 0, "5–10%": 0, "10–25%": 0,
+        "25–50%": 0, "50–90%": 0, ">90%": 0
+    }
+
+    for c in item_counts.values():
+        f = pct(c)
+        if f < 5: freq_bins["<5%"] += 1
+        elif f < 10: freq_bins["5–10%"] += 1
+        elif f < 25: freq_bins["10–25%"] += 1
+        elif f < 50: freq_bins["25–50%"] += 1
+        elif f < 90: freq_bins["50–90%"] += 1
+        else: freq_bins[">90%"] += 1
+
+    print("Item frequency distribution:", freq_bins)
 
 
 def main():
-    if len(sys.argv) != 4:
-        print("Usage: python3 generate_transactions.py <universal_itemset> <num_transactions> <output_file>")
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description="Generate transactional dataset")
+    parser.add_argument("universal_itemset", type=int, help="Number of distinct items")
+    parser.add_argument("num_transactions", type=int, help="Number of transactions")
+    parser.add_argument(
+        "--output", type=str, default="transactions.dat",
+        help="Output file name"
+    )
 
-    item_spec = sys.argv[1]
-    try:
-        num_tx = int(sys.argv[2])
-    except ValueError:
-        print("Error: <num_transactions> must be an integer.")
-        sys.exit(1)
-    out_path = sys.argv[3]
-
-    items = load_items(item_spec)
-    if not items:
-        print("Error: universal_itemset is empty.")
-        sys.exit(1)
-
-    rng = random.Random(42)
-    clusters, cluster_weights = build_clusters(items, rng)
-
-    # Zipf-like weights to create skewed item frequencies
-    alpha = 1.1
-    item_weights = [1.0 / ((i + 1) ** alpha) for i in range(len(items))]
-
-    seen = set()
-    transactions = []
-    max_attempts = num_tx * 30
-    attempts = 0
-
-    while len(transactions) < num_tx and attempts < max_attempts:
-        attempts += 1
-        tx = generate_transaction(items, clusters, cluster_weights, item_weights, rng)
-        key = tuple(tx)
-        if key in seen:
-            continue
-        seen.add(key)
-        transactions.append(tx)
-
-    if len(transactions) < num_tx:
-        print(f"Warning: generated {len(transactions)} unique transactions out of requested {num_tx}.")
-
-    with open(out_path, "w") as f:
-        for tx in transactions:
-            f.write(" ".join(tx) + "\n")
-
-    print(f"Wrote {len(transactions)} transactions to {out_path}")
+    args = parser.parse_args()
+    generate_dataset(args.universal_itemset, args.num_transactions, args.output)
 
 
 if __name__ == "__main__":
