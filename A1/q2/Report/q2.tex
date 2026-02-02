@@ -15,6 +15,8 @@ Q2 (Frequent Subgraphs): gSpan vs. FSG vs. Gaston}
 
 \begin{document}
 
+\sloppy
+
 \maketitle
 
 \section{Introduction}
@@ -42,6 +44,54 @@ From the conversion logs:
 
 The FSG tool prints additional dataset statistics (from the 10\% run header): average of 36 vertices and 37 edges per graph, with maxima of 129 vertices and 135 edges. This indicates that the dataset graphs are moderately sized and sparse.
 
+\subsection{How \texttt{convert\_dataset.py} Performs Conversion}
+
+The Yeast dataset is provided in a custom format (as described in the assignment PDF) where each graph is encoded as:
+\begin{itemize}
+	\item a line starting with \texttt{\#<graphID>}
+	\item an integer \texttt{num\_nodes}
+	\item \texttt{num\_nodes} lines of node labels (strings)
+	\item an integer \texttt{num\_edges}
+	\item \texttt{num\_edges} lines of edges, each written as three space-separated integers:
+	\texttt{src\_id dst\_id edge\_type}
+\end{itemize}
+
+The script \texttt{A1/q2/convert\_dataset.py} converts this into the formats required by gSpan, Gaston, and FSG. Its key steps are:
+
+\paragraph{1) Parsing into an in-memory graph list.}
+The function \texttt{parse\_yeast\_dataset(filepath)} reads the file sequentially and constructs a list of graphs.
+Each graph is represented as a dictionary with (i) the original graph id string, (ii) a list of node labels, and (iii) a list of edges stored as tuples $(u,v,\ell_e)$.
+
+\paragraph{2) Node-label recoding to compact integers.}
+The Yeast node labels are strings. Most FSM implementations expect node labels as integers, so the converter builds a global mapping
+\texttt{node\_label\_map : string $\to$ int} by collecting all distinct node labels across the dataset and assigning them contiguous ids in sorted order.
+This mapping is saved for inspection in \texttt{converted\_data/node\_labels.txt}.
+
+\noindent\textbf{Edge labels.} The Yeast edge labels are already integers (only 3 distinct values in our dataset). The converter preserves these edge labels as-is in the output (i.e., it does not apply an additional recoding during writing).
+
+\paragraph{3) Writing per-tool formats.}
+After parsing and label mapping, the script writes three converted datasets:
+\begin{itemize}
+	\item \textbf{gSpan format} (also used for Gaston in this pipeline) to \texttt{converted\_data/yeast\_gspan.txt} and \texttt{converted\_data/yeast\_gaston.txt}:
+	\begin{itemize}
+		\item graph header: \texttt{t \# <idx>}
+		\item node lines: \texttt{v <node\_id> <node\_label\_int>}
+		\item edge lines: \texttt{e <src> <dst> <edge\_label>}
+	\end{itemize}
+	Here \texttt{<idx>} is a 0-based sequential id assigned by the converter (it does not preserve the original Yeast \texttt{\#graphID} string in the output).
+
+	\item \textbf{FSG format} to \texttt{converted\_data/yeast\_fsg.txt}:
+	\begin{itemize}
+		\item graph header: \texttt{t \# <idx>}
+		\item node lines: \texttt{v <node\_id> <node\_label\_int>}
+		\item edge lines: \texttt{u <src> <dst> <edge\_label>}
+	\end{itemize}
+	FSG uses \texttt{u} to denote (conceptually) undirected edges.
+\end{itemize}
+
+\noindent\textbf{Why this conversion is necessary.} Without conversion, the tools would either fail to parse the input or treat string labels inconsistently.
+Recoding labels to small integers and standardizing the record structure ensures comparable, reproducible runs across the three miners.
+
 \subsection{Format Conversion and Support Parameterization}
 
 The three tools use slightly different conventions for input format and support thresholds:
@@ -49,8 +99,14 @@ The three tools use slightly different conventions for input format and support 
 	\item \textbf{gSpan:} run with \texttt{-s} as a fraction in $[0,1]$ (e.g., 0.10). The script runs \texttt{gSpan -f <file> -s <frac> -o}.
 	\item \textbf{FSG:} run with \texttt{-s} as an integer percentage (e.g., 10 for 10\%).
 	\item \textbf{Gaston:} expects \emph{absolute} support count. With 64,110 graphs, the corresponding counts are:
-	$$\text{supp}(5\%)=3205,\; \text{supp}(10\%)=6411,\; \text{supp}(25\%)=16027,\; \text{supp}(50\%)=32055,\; \text{supp}(95\%)=60904.$$
+	\begin{align*}
+	\text{supp}(5\%)&=3205, &\text{supp}(10\%)&=6411,\\
+	\text{supp}(25\%)&=16027, &\text{supp}(50\%)&=32055,\\
+	\text{supp}(95\%)&=60904.
+	\end{align*}
 \end{itemize}
+
+\noindent\textbf{Rounding note.} Gaston support counts are computed as $\lfloor 0.\text{minSup}\cdot N\rfloor$ (with a minimum of 1) in the provided wrapper. For example, $0.95\cdot 64110=60904.5$, which becomes 60904.
 
 \noindent The experiment pipeline \texttt{A1/q2/q2.sh} calls \texttt{A1/q2/run\_experiments.py}, which first converts the dataset once and then measures wall-clock time around each algorithm invocation. Thus the reported runtimes include the algorithm's own parsing/output overhead for its specific format, but do \emph{not} include the one-time conversion cost.
 
@@ -81,6 +137,32 @@ Table~\ref{tab:q2_runtimes} summarizes the measured runtimes (seconds). For gSpa
 \label{tab:q2_runtimes}
 \end{table}
 
+\subsection{Relative Speedups (How Much Faster is Gaston?)}
+
+To quantify the gap between methods, Table~\ref{tab:q2_speedups} reports the speedup factors
+\emph{relative to Gaston} (ratio of runtimes). For the 5\% gSpan timeout, the speedup is a lower bound.
+
+\begin{table}[H]
+\centering
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{MinSup (\%)} & \textbf{gSpan/Gaston} & \textbf{FSG/Gaston} & \textbf{gSpan/FSG} \\
+\hline
+5  & $\ge$34.54$\times$ & 34.14$\times$ & --- \\
+\hline
+10 & 31.92$\times$ & 32.10$\times$ & 0.99$\times$ \\
+\hline
+25 & 22.53$\times$ & 26.88$\times$ & 0.84$\times$ \\
+\hline
+50 & 16.65$\times$ & 18.88$\times$ & 0.88$\times$ \\
+\hline
+95 & 9.10$\times$ & 24.20$\times$ & 0.38$\times$ \\
+\hline
+\end{tabular}
+\caption{Relative speedups from the measured runtimes. Ratios are computed using Table~\ref{tab:q2_runtimes}.}
+\label{tab:q2_speedups}
+\end{table}
+
 \subsection{Pattern Output Sizes}
 
 To contextualize runtime, we also count how many frequent subgraph patterns are output at each threshold.
@@ -109,6 +191,9 @@ At 5\%, gSpan timed out, so its pattern count reflects only the partial output w
 \label{tab:q2_pattern_counts}
 \end{table}
 
+\noindent\textbf{Important caveat on output counts.} The three tools do not necessarily output identical pattern sets even at the same minimum support, because they differ in (i) which pattern families are enumerated by default (e.g., whether single-vertex patterns are printed), and (ii) how undirected edges and canonical forms are handled.
+This is visible at 95\% support: gSpan outputs 5 patterns, including two single-vertex patterns, while FSG and Gaston output 3 patterns (edge-containing patterns only).
+
 \subsection{Runtime Plot}
 
 Figure~\ref{fig:q2_plot} shows the runtime curves produced by the pipeline (support on x-axis, runtime in seconds on y-axis), as required by the assignment.
@@ -135,6 +220,17 @@ This expands the search space and the number of embeddings that must be tracked,
 The result is a steep runtime increase for gSpan and FSG in particular:
 from seconds at 95\% to minutes at 50\%/25\%, and to roughly an hour around 5\%.
 
+\subsection{Output Size vs. Total Work (Why Runtime is Not Proportional to \#Patterns)}
+
+Although pattern output size is a useful proxy for difficulty, runtime is driven by \emph{total search effort}, which includes many intermediate candidates that never become frequent.
+This is especially important for FSM:
+\begin{itemize}
+	\item \textbf{Candidate expansion dominates:} Every frequent pattern may admit many rightmost/DFS extensions (gSpan) or join-based expansions (FSG). At low support, the branching factor increases quickly.
+	\item \textbf{Support counting is expensive:} Determining whether an extension is frequent requires counting embeddings across many graphs (effectively repeated subgraph isomorphism checks, often optimized but still costly).
+	\item \textbf{Duplicate elimination adds overhead:} Canonical-code checks (gSpan DFS code) or isomorphism-based duplicate filtering (FSG) are performed repeatedly during enumeration.
+\end{itemize}
+This explains why gSpan/FSG can take $\sim$20 minutes at 10\% even though the final output is ``only'' about 8.5k patterns: a large fraction of work occurs on candidates that are generated, checked, and pruned before output.
+
 \subsection{Why Gaston is Consistently Faster Here}
 
 Gaston is substantially faster than gSpan and FSG at all supports in our runs (e.g., at 10\%: 36.92s vs $\sim$1179s).
@@ -160,6 +256,15 @@ However, they arrive there via different algorithmic approaches:
 \end{itemize}
 
 The near-equality in runtime at 10\% suggests that, for this dataset and implementation mix, the dominant cost is not only duplicate elimination (where gSpan is designed to help) but the sheer volume of embeddings/support checks required in the frequent regime.
+
+\subsection{Interpreting the 5\% Timeout (Practical Resource Considerations)}
+
+At 5\% support, gSpan hits the wrapper's 3600s timeout, while FSG completes in 3558.52s and Gaston completes in 104.21s.
+Two practical takeaways follow:
+\begin{itemize}
+	\item \textbf{The ``hard regime'' for Yeast is around 5\%:} the output size (tens of thousands of patterns) indicates the dataset contains many recurring substructures at this threshold.
+	\item \textbf{Timeout implies incomplete outputs:} any metrics derived from gSpan's 5\% output file (including \#patterns) should be treated as a lower bound, because enumeration terminated early.
+\end{itemize}
 
 \subsection{Support-Specific Observations}
 
