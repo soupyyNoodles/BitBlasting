@@ -86,20 +86,37 @@ def run_fsg(executable, dataset_path, support_percent, output_path):
     Run FSG with given support threshold.
     fsg -s support dataset
     support is in percentage (integer)
+    FSG outputs to yeast_fsg.fp in the current directory
     """
     args = ['-s', str(int(support_percent)), dataset_path]
     
     runtime, success, stdout, stderr = run_algorithm(executable, args, None)
     
-    # FSG outputs to dataset.fp
-    fsg_output = dataset_path + '.fp'
-    if os.path.exists(fsg_output):
-        with open(fsg_output, 'r') as src:
-            content = src.read()
-        with open(output_path, 'w') as dst:
-            dst.write(content)
-        os.remove(fsg_output)
-    else:
+    # FSG outputs to yeast_fsg.fp (basename of dataset with .fp extension)
+    # Get the base name without extension for the FSG output file
+    dataset_basename = os.path.splitext(os.path.basename(dataset_path))[0]
+    fsg_output = dataset_basename + '.fp'
+    
+    # Check both in current directory and dataset directory
+    possible_locations = [
+        fsg_output,
+        os.path.join(os.path.dirname(dataset_path), fsg_output),
+        dataset_path + '.fp'
+    ]
+    
+    found = False
+    for fsg_output_path in possible_locations:
+        if os.path.exists(fsg_output_path):
+            with open(fsg_output_path, 'r') as src:
+                content = src.read()
+            with open(output_path, 'w') as dst:
+                dst.write(content)
+            os.remove(fsg_output_path)
+            found = True
+            break
+    
+    if not found:
+        # Create empty file if no output found
         open(output_path, 'w').close()
     
     return runtime, success

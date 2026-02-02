@@ -1,0 +1,107 @@
+Parsing Yeast dataset from Yeast/167.txt_graph...
+Found 64110 graphs
+Found 11 unique node labels
+Found 3 unique edge labels
+Converting to gSpan format: /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt
+Converting to Gaston format: /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt
+Converting to FSG format: /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+Conversion complete!
+Converting dataset to different formats...
+Number of graphs in dataset: 64110
+
+==================================================
+Running with support = 5%
+==================================================
+
+--- gSpan ---
+Running: gSpan/gSpan -f /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt -s 0.05 -o
+Timeout after 3600 seconds
+gSpan runtime: 3600.00s
+
+--- FSG ---
+Running: Fsg/Linux/fsg -s 5 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+FSG runtime: 3558.52s
+
+--- Gaston ---
+Running: Gaston/gaston 3205 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt output/gaston5
+Gaston runtime: 104.21s
+
+==================================================
+Running with support = 10%
+==================================================
+
+--- gSpan ---
+Running: gSpan/gSpan -f /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt -s 0.1 -o
+gSpan runtime: 1178.81s
+
+--- FSG ---
+Running: Fsg/Linux/fsg -s 10 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+FSG runtime: 1185.07s
+
+--- Gaston ---
+Running: Gaston/gaston 6411 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt output/gaston10
+Gaston runtime: 36.92s
+
+==================================================
+Running with support = 25%
+==================================================
+
+--- gSpan ---
+Running: gSpan/gSpan -f /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt -s 0.25 -o
+gSpan runtime: 281.89s
+
+--- FSG ---
+Running: Fsg/Linux/fsg -s 25 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+FSG runtime: 336.23s
+
+--- Gaston ---
+Running: Gaston/gaston 16027 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt output/gaston25
+Gaston runtime: 12.51s
+
+==================================================
+Running with support = 50%
+==================================================
+
+--- gSpan ---
+Running: gSpan/gSpan -f /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt -s 0.5 -o
+gSpan runtime: 101.90s
+
+--- FSG ---
+Running: Fsg/Linux/fsg -s 50 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+FSG runtime: 115.53s
+
+--- Gaston ---
+Running: Gaston/gaston 32055 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt output/gaston50
+Gaston runtime: 6.12s
+
+==================================================
+Running with support = 95%
+==================================================
+
+--- gSpan ---
+Running: gSpan/gSpan -f /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gspan.txt -s 0.95 -o
+gSpan runtime: 7.37s
+
+--- FSG ---
+Running: Fsg/Linux/fsg -s 95 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_fsg.txt
+FSG runtime: 19.60s
+
+--- Gaston ---
+Running: Gaston/gaston 60904 /home/baadalvm/Desktop/BitBlasting/A1/q2/converted_data/yeast_gaston.txt output/gaston95
+Gaston runtime: 0.81s
+
+==================================================
+Generating plot...
+Plot saved to output/plot.png
+
+==================================================
+Summary of Results:
+==================================================
+Support    gSpan (s)       FSG (s)         Gaston (s)     
+-------------------------------------------------------
+5%         3600.00         3558.52         104.21         
+10%         1178.81         1185.07         36.92          
+25%         281.89          336.23          12.51          
+50%         101.90          115.53          6.12           
+95%         7.37            19.60           0.81           
+Experiments complete. Output saved to output
