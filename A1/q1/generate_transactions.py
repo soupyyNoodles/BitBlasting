@@ -12,6 +12,8 @@ Core idea:
 - Add rare items for realism
 """
 
+# bash q1_2.sh 26 15000
+
 import random
 import argparse
 
@@ -26,62 +28,64 @@ def generate_dataset(universal_itemset: int, num_transactions: int, output_file:
     random.shuffle(items)
 
     # -----------------------------
-    # Partition universe
+    # Partition universe into MULTIPLE CORRELATED CLUSTERS
+    # This is key: Apriori generates exponential candidates from correlated items
+    # FP-Growth handles this efficiently with tree structure
     # -----------------------------
-    core_size = max(12, int(0.15 * universal_itemset))      # drives Apriori explosion
-    medium_size = int(0.35 * universal_itemset)
-    rare_size = universal_itemset - core_size - medium_size
-
-    core_items = items[:core_size]
-    medium_items = items[core_size:core_size + medium_size]
-    rare_items = items[core_size + medium_size:]
-
-    # -----------------------------
-    # Medium item groups (correlated noise)
-    # -----------------------------
-    random.shuffle(medium_items)
-    medium_groups = [
-        medium_items[i:i + 5]
-        for i in range(0, len(medium_items), 5)
-        if len(medium_items[i:i + 5]) == 5
-    ]
+    # Create 4-5 clusters of highly correlated items (support 35-70%)
+    num_clusters = max(4, universal_itemset // 15)  # e.g., 50 items -> ~4 clusters
+    cluster_size = max(10, universal_itemset // (num_clusters + 2))  # ~12-13 items each
+    
+    clusters = []
+    idx = 0
+    for c in range(num_clusters):
+        if idx + cluster_size <= len(items):
+            clusters.append(items[idx:idx + cluster_size])
+            idx += cluster_size
+    
+    # Remaining items are noise
+    noise_items = items[idx:]
 
     transactions = []
 
     # -----------------------------
-    # Transaction generation
+    # Transaction generation with STRONG correlations
     # -----------------------------
     for _ in range(num_transactions):
         T = set()
 
-        # ---- CORE BLOCK (critical) ----
-        # Survives 10/25/50%, dies at 90%
-        if random.random() < 0.7:
-            T.update(core_items)
-        else:
-            # partial core inclusion
-            for item in core_items:
-                if random.random() < 0.2:
-                    T.add(item)
+        # ---- CORRELATED CLUSTERS (critical for Apriori hardness) ----
+        # Each cluster has varying support: 80%, 70%, 60%, 55%
+        # This keeps many itemsets frequent at 10/25/50 thresholds
+        cluster_supports = [0.80, 0.70, 0.60, 0.55]
+        
+        for c_idx, cluster in enumerate(clusters):
+            support = cluster_supports[c_idx % len(cluster_supports)]
+            if random.random() < support:
+                # Add ALL items from cluster (creates dense patterns)
+                T.update(cluster)
+            else:
+                # Partial membership (keeps support from dropping too low)
+                for item in cluster:
+                    if random.random() < 0.5:
+                        T.add(item)
 
-        # ---- MEDIUM ITEMS ----
-        # Adds combinatorial candidates
-        if random.random() < 0.5 and medium_groups:
-            group = random.choice(medium_groups)
-            k = random.randint(2, 4)
-            T.update(random.sample(group, k))
-        else:
-            for item in random.sample(medium_items, min(3, len(medium_items))):
-                if random.random() < 0.3:
-                    T.add(item)
+        # ---- INTER-CLUSTER CORRELATIONS ----
+        # Create correlations between clusters to multiply candidate generation
+        if len(clusters) >= 2 and random.random() < 0.7:
+            c1, c2 = random.sample(range(len(clusters)), 2)
+            # Add random samples from both clusters
+            T.update(random.sample(clusters[c1], min(5, len(clusters[c1]))))
+            T.update(random.sample(clusters[c2], min(5, len(clusters[c2]))))
 
-        # ---- RARE ITEMS ----
-        if rare_items and random.random() < 0.1:
-            T.add(random.choice(rare_items))
+        # ---- NOISE ITEMS (low frequency, adds realism) ----
+        for item in random.sample(noise_items, min(6, len(noise_items))):
+            if random.random() < 0.06:
+                T.add(item)
 
         # ---- SAFETY: non-empty ----
         if not T:
-            T.add(random.choice(core_items))
+            T.add(random.choice(clusters[0]))
 
         transactions.append(sorted(T))
 
@@ -105,7 +109,7 @@ def generate_dataset(universal_itemset: int, num_transactions: int, output_file:
     print(f"Dataset written to {output_file}")
     print(f"Transactions: {num_transactions}")
     print(f"Items: {universal_itemset}")
-    print(f"Core block size: {core_size}")
+    print(f"Number of clusters: {len(clusters)}")
     print(f"Average transaction length: {sum(len(t) for t in transactions)/num_transactions:.2f}")
 
     freq_bins = {
