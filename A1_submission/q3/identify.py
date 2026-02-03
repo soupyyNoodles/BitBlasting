@@ -1,11 +1,9 @@
 import sys
 import os
 import pandas as pd
-import numpy as np
-import networkx as nx
+import rustworkx as rx
 import pickle
 from gspan_mining import gSpan
-from gspan_mining import gspan
 
 # Patch gspan if needed (for pandas compatibility)
 try:
@@ -58,24 +56,34 @@ def write_gspan_format(graphs, output_path):
                 f.write(f"{line}\n")
     return output_path
 
-def gspan_to_nx(g):
+def gspan_to_rx(g):
     """
-    Converts gspan_mining.graph.Graph to networkx.Graph
+    Converts gspan_mining.graph.Graph to rustworkx.PyGraph
     """
-    G = nx.Graph()
-    for vid, v in g.vertices.items():
-        G.add_node(vid, label=str(v.vlb))
-    for vid, v in g.vertices.items():
+    G = rx.PyGraph(multigraph=False)
+    # Map gspan vids to rx indices
+    vid_map = {}
+    
+    # Add nodes
+    # g.vertices is a dict {vid: Vertex}
+    # We want to maybe sort by vid to be deterministic?
+    sorted_vids = sorted(g.vertices.keys())
+    
+    for vid in sorted_vids:
+        v = g.vertices[vid]
+        idx = G.add_node({'label': str(v.vlb)})
+        vid_map[vid] = idx
+        
+    # Add edges
+    for vid in sorted_vids:
+        v = g.vertices[vid]
         for dst, e in v.edges.items():
             if vid < dst:
-                G.add_edge(vid, dst, label=str(e.elb))
+                # Add edge
+                if dst in vid_map:
+                    G.add_edge(vid_map[vid], vid_map[dst], {'label': str(e.elb)})
     return G
 
-def is_discriminative(subgraph_support, parent_supports, gamma=0.9):
-    for p_sup in parent_supports:
-        if subgraph_support >= gamma * p_sup:
-            return False # Redundant
-    return True
 
 def main():
     if len(sys.argv) < 3:
@@ -123,78 +131,79 @@ def main():
         
         for i, p in enumerate(gs._frequent_subgraphs):
             sup = report.iloc[i]['support']
-            g_nx = gspan_to_nx(p.to_graph())
-            size = g_nx.number_of_edges() # gIndex usually uses edges or vertices. Edges is more standard for substructure.
+            sup = report.iloc[i]['support']
+            g_rx = gspan_to_rx(p.to_graph())
+            size = g_rx.num_edges() 
             
             if size not in subgraphs_by_size:
                 subgraphs_by_size[size] = []
             subgraphs_by_size[size].append({
                 'support': sup,
-                'nx': g_nx,
-                'gspan': p # Keep if needed, though matching nx is safer for isomorphism
+                'rx': g_rx, # Store as rx
+                'gspan': p 
             })
             
     except Exception as e:
         print(f"Error processing support: {e}")
         return
-
-    selected_subgraphs = [] # List of {'nx': g, 'support': s, 'id': i}
     
     sizes = sorted(subgraphs_by_size.keys())
     
-    from networkx.algorithms.isomorphism import GraphMatcher
+    # Helper for matching
+    def node_match(n1, n2):
+        return n1['label'] == n2['label']
+
+    def edge_match(e1, e2):
+        return e1['label'] == e2['label']
     
     def is_subgraph(small, big):
-        gm = GraphMatcher(big, small, node_match=lambda n1,n2: n1['label']==n2['label'], edge_match=lambda e1,e2: e1['label']==e2['label'])
-        return gm.subgraph_is_isomorphic()
+        return rx.is_subgraph_isomorphic(big, small, node_matcher=node_match, edge_matcher=edge_match, induced=False)
 
-    print("Selecting discriminative subgraphs (gIndex heuristic)...")
-    
-    final_selected = []
-    
-    # Process by size
-    for size in sizes:
-        candidates = subgraphs_by_size[size]
-        print(f"Processing {len(candidates)} subgraphs of size {size}...")
+    def select_discriminative(subgraphs_by_size, gamma):
+        print(f"Selecting discriminative subgraphs (gamma={gamma})...")
+        selected = []
         
-        for cand in candidates:
-            g = cand['nx']
-            sup = cand['support']
-            g.graph['support'] = sup
+        # Process by size
+        for size in sizes:
+            candidates = subgraphs_by_size[size]
+            # print(f"Processing {len(candidates)} subgraphs of size {size}...")
             
-            is_disc = 1
-            
-            # Check against parents of size size-1
-            if size - 1 in subgraphs_by_size:
-                parents = subgraphs_by_size[size - 1]
-                for p in parents:
-                    p_nx = p['nx']
-                    p_sup = p['support']
-                    
-                    gamma = 0.9
-                    if sup >= gamma * p_sup:
-                        if is_subgraph(p_nx, g):
-                            # if abs(sup - len(graphs) * 0.5) < abs(p_sup - len(graphs) * 0.5):
-                            #     if p_nx in final_selected:
-                            #         final_selected.remove(p_nx)
-                            #     is_disc = 2
-                            # elif is_disc != 2: 
-                            #     is_disc = 0
-                            is_disc = 0
-                            break   
-            
-            if is_disc:
-                if size > 1:
-                    score = abs(sup - len(graphs) * 0.5) / len(graphs)
-                    final_selected.append((g, score))
+            for cand in candidates:
+                g = cand['rx']
+                sup = cand['support']
+                
+                is_disc = 1
+                
+                # Check against parents of size size-1
+                if size - 1 in subgraphs_by_size:
+                    parents = subgraphs_by_size[size - 1]
+                    for p in parents:
+                        p_rx = p['rx']
+                        p_sup = p['support']
+                        
+                        if sup >= gamma * p_sup:
+                            if is_subgraph(p_rx, g):
+                                is_disc = 0
+                                break   
+                
+                if is_disc:
+                    if size > 1:
+                        score = abs(sup - len(graphs) * 0.5) / len(graphs)
+                        selected.append((g, score))
+        return selected
+
+    # First try with gamma 0.8
+    final_selected = select_discriminative(subgraphs_by_size, 0.8)
+    
+    # Check if we have enough
+    if len(final_selected) < 50:
+        print(f"Count {len(final_selected)} < 50. Retrying with gamma=0.9...")
+        final_selected = select_discriminative(subgraphs_by_size, 0.9)
     
     # Global Median Support Selection
     print("Selecting Top 50 by Score...")
     
     # Sort by score (ascending, as score is distance from 50%)
-    # score = abs(sup - len(graphs) * 0.5) / len(graphs)
-    # Lower score is better (closer to 50% split)
-    
     final_selected.sort(key=lambda x: x[1])
     
     # Take top 50

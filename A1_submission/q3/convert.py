@@ -1,8 +1,8 @@
 import sys
 import pickle
 import numpy as np
-import networkx as nx
-from networkx.algorithms import isomorphism
+import rustworkx as rx
+# import networkx as nx # Removed
 from joblib import Parallel, delayed
 import multiprocessing
 
@@ -17,32 +17,45 @@ def parse_graphs(file_path):
                 continue
             if line.startswith('#'):
                 if current_graph_lines:
-                    # Convert previous graph to NX
-                    graphs.append(lines_to_nx(current_graph_lines))
+                    # Convert previous graph
+                    graphs.append(lines_to_rx(current_graph_lines))
                 current_graph_lines = []
             else:
                 current_graph_lines.append(line)
         if current_graph_lines:
-            graphs.append(lines_to_nx(current_graph_lines))
+            graphs.append(lines_to_rx(current_graph_lines))
     return graphs
 
-def lines_to_nx(lines):
-    G = nx.Graph()
+def lines_to_rx(lines):
+    G = rx.PyGraph(multigraph=False)
     # lines: 'v id label', 'e src dst label'
+    # Rustworkx uses integer indices. We need to map file VIDs to rx indices.
+    vid_map = {}
+    
     for line in lines:
         parts = line.split()
         if parts[0] == 'v':
             # v id label
             vid = int(parts[1])
             vlb = str(parts[2])
-            G.add_node(vid, label=vlb)
+            idx = G.add_node({'label': vlb})
+            vid_map[vid] = idx
         elif parts[0] == 'e':
             # e src dst label
             src = int(parts[1])
             dst = int(parts[2])
             elb = str(parts[3])
-            G.add_edge(src, dst, label=elb)
+            if src in vid_map and dst in vid_map:
+                G.add_edge(vid_map[src], vid_map[dst], {'label': elb})
     return G
+
+
+# Helper functions for matching
+def node_match(n1, n2):
+    return n1['label'] == n2['label']
+
+def edge_match(e1, e2):
+    return e1['label'] == e2['label']
 
 # Helper function for parallel processing
 def process_feature(subgraph, graphs, index, total):
@@ -50,8 +63,6 @@ def process_feature(subgraph, graphs, index, total):
     Checks isomorphism of 'subgraph' against all 'graphs'.
     Returns a column vector (N,) of 0s and 1s.
     """
-    nm = isomorphism.categorical_node_match("label", None)
-    em = isomorphism.categorical_edge_match("label", None)
     
     # Progress Print
     if index % 10 == 0:
@@ -60,8 +71,7 @@ def process_feature(subgraph, graphs, index, total):
     column = np.zeros(len(graphs), dtype=np.int8)
     
     for i, G in enumerate(graphs):
-        GM = isomorphism.GraphMatcher(G, subgraph, node_match=nm, edge_match=em)
-        if GM.subgraph_is_isomorphic():
+        if rx.is_subgraph_isomorphic(G, subgraph, node_matcher=node_match, edge_matcher=edge_match, induced=False):
             column[i] = 1
             
     return column
@@ -78,6 +88,7 @@ def main():
     # Load subgraphs
     with open(subgraphs_path, 'rb') as f:
         subgraphs = pickle.load(f)
+    
     print(f"Loaded {len(subgraphs)} subgraphs.", flush=True)
     
     # Load input graphs
@@ -97,8 +108,6 @@ def main():
     )
     
     # Combine columns into matrix (N, k)
-    # results is list of k arrays of shape (N,)
-    # Stack columns -> (k, N) -> Transpose -> (N, k)
     features = np.column_stack(results)
     
     np.save(output_path, features)

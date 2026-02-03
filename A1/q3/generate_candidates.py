@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 
-#TODO: Read up this piece of code again
+#TODO: Read up on this piece of code again
 
 def main():
     if len(sys.argv) < 4:
@@ -29,33 +29,11 @@ def main():
         
     print(f"Generating candidates for {M} queries against {N} DB graphs...")
     
-    # Logic:
-    # if query has feature f (1), DB graph MUST have feature f (1).
-    # if query has 0, DB graph can be 0 or 1.
-    # Condition: NOT (Q[i]==1 AND G[i]==0)
-    # Equivalent to: (Q[i] <= G[i]) for all i where Q[i]=1.
-    
-    # Vectorized check:
-    # Using broadcasting is expensive if matrices are huge (N*M*k).
-    # But usually manageable.
-    # N ~ 1000-4000
-    # M ~ 100
-    # k ~ 50
-    # 4000 * 100 * 50 = 20M elems. fits in memory easily.
-    
-    # Expand dims
-    # query: M x 1 x k
-    # db:    1 x N x k
-    
     Q_broad = query_feats[:, np.newaxis, :]
     DB_broad = db_feats[np.newaxis, :, :]
     
     # Check invalid: Q=1 and DB=0
     invalid_mask = (Q_broad == 1) & (DB_broad == 0)
-    
-    # Candidate if NO invalid feature match
-    # invalid_mask: M x N x k
-    # any invalid feature?
     is_invalid = np.any(invalid_mask, axis=2) # M x N
     
     # write results

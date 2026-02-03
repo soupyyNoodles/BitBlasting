@@ -1,14 +1,15 @@
 import sys
 import os
 import pickle
-import networkx as nx
-from networkx.algorithms import isomorphism
+import rustworkx as rx
+# import networkx as nx
+# from networkx.algorithms import isomorphism
 import multiprocessing
 
 def parse_graphs(file_path):
     """
     Parses the graph dataset.
-    Returns a list of networkx.Graph objects.
+    Returns a list of rustworkx.PyGraph objects.
     """
     graphs = []
     current_graph_lines = []
@@ -20,27 +21,31 @@ def parse_graphs(file_path):
                 continue
             if line.startswith('#'):
                 if current_graph_lines:
-                    graphs.append(lines_to_nx(current_graph_lines))
+                    graphs.append(lines_to_rx(current_graph_lines))
                 current_graph_lines = []
             else:
                 current_graph_lines.append(line)
         if current_graph_lines:
-            graphs.append(lines_to_nx(current_graph_lines))
+            graphs.append(lines_to_rx(current_graph_lines))
     return graphs
 
-def lines_to_nx(lines):
-    G = nx.Graph()
+def lines_to_rx(lines):
+    G = rx.PyGraph(multigraph=False)
+    vid_map = {} # Map file VID to rx index
+    
     for line in lines:
         parts = line.split()
         if parts[0] == 'v':
             vid = int(parts[1])
             vlb = str(parts[2])
-            G.add_node(vid, label=vlb)
+            idx = G.add_node({'label': vlb})
+            vid_map[vid] = idx
         elif parts[0] == 'e':
             src = int(parts[1])
             dst = int(parts[2])
             elb = str(parts[3])
-            G.add_edge(src, dst, label=elb)
+            if src in vid_map and dst in vid_map:
+                G.add_edge(vid_map[src], vid_map[dst], {'label': elb})
     return G
 
 
@@ -55,68 +60,64 @@ def init_worker(db_graphs):
     global global_db_graphs
     global_db_graphs = db_graphs
 
-def check_isomorphism(args):
-    """
-    Worker function to check isomorphism for a single query against all database graphs.
-    """
-    q_idx, query_graph = args # Removed db_graphs from args
-    
-    # Access global db_graphs
+def check_query(args):
+    q_idx, query_graph = args
     db_graphs = global_db_graphs
     
-    # Create matchers inside the worker to avoid pickling issues with local functions
-    nm = isomorphism.categorical_node_match("label", None)
-    em = isomorphism.categorical_edge_match("label", None)
+    def node_match(n1, n2):
+        return n1['label'] == n2['label']
+
+    def edge_match(e1, e2):
+        return e1['label'] == e2['label']
     
     count = 0
-    # For small queries and large DB, typically we check if query is subgraph of DB graph
-    for db_graph in db_graphs:
-        GM = isomorphism.GraphMatcher(db_graph, query_graph, node_match=nm, edge_match=em)
-        if GM.subgraph_is_isomorphic():
+    for i, db_graph in enumerate(db_graphs):
+        # Check if query_graph is a subgraph of db_graph
+        # rx.is_subgraph_isomorphic(big, small, ...)
+        if rx.is_subgraph_isomorphic(db_graph, query_graph, node_matcher=node_match, edge_matcher=edge_match, induced=False):
             count += 1
+            
     return q_idx, count
 
 def main():
     if len(sys.argv) < 4:
-        print("Usage: python calculate_rq.py <db_graphs_path> <query_graphs_path> <output_rq_pkl>")
+        print("Usage: python calculate_rq.py <db_file> <query_file> <output_rq_pkl>")
         sys.exit(1)
 
     db_path = sys.argv[1]
     query_path = sys.argv[2]
     output_path = sys.argv[3]
-
+    
     print(f"Loading database graphs from {db_path}...")
     db_graphs = parse_graphs(db_path)
     print(f"Loaded {len(db_graphs)} database graphs.")
-
+    
     print(f"Loading query graphs from {query_path}...")
-    query_graphs = parse_graphs(query_path)
-    print(f"Loaded {len(query_graphs)} query graphs.")
-
-    # Prepare arguments for multiprocessing
-    # Only pass query index and query graph. db_graphs is passed via initializer.
-    tasks = []
-    for i, q in enumerate(query_graphs):
-        tasks.append((i, q))
-
-    print(f"Starting isomorphism checks for {len(query_graphs)} queries using multiprocessing...")
+    queries = parse_graphs(query_path)
+    print(f"Loaded {len(queries)} query graphs.")
     
-    num_cpus = max(1, multiprocessing.cpu_count() - 1)
-    results = {}
+    # Setup global
+    global global_db_graphs
+    global_db_graphs = db_graphs
     
-    # Pass db_graphs to initializer
-    with multiprocessing.Pool(processes=num_cpus, initializer=init_worker, initargs=(db_graphs,)) as pool:
-        # Use simple map or imap without tqdm
-        for q_idx, count in pool.imap_unordered(check_isomorphism, tasks):
-            results[q_idx] = count
-            if len(results) % 10 == 0:
-                print(f"Processed {len(results)}/{len(query_graphs)} queries...", flush=True)
+    queries_with_idx = list(enumerate(queries))
+    
+    print(f"Starting isomorphism checks for {len(queries)} queries using multiprocessing...")
+    
+    rq_counts = {}
+    
+    # Use fewer processes to avoid OOM if graphs are large, but usually cpu_count is fine
+    # Chunksize 1 for better progress updates
+    with multiprocessing.Pool(processes=multiprocessing.cpu_count()) as pool:
+        for i, (q_idx, count) in enumerate(pool.imap_unordered(check_query, queries_with_idx)):
+            rq_counts[q_idx] = count
+            
+            if i % 10 == 0:
+                print(f"Processed {i+1}/{len(queries)} queries...", flush=True)
 
-    # Save results
     print(f"Saving results to {output_path}...")
     with open(output_path, 'wb') as f:
-        pickle.dump(results, f)
-    
+        pickle.dump(rq_counts, f)
     print("Done.")
 
 if __name__ == "__main__":

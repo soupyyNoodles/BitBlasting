@@ -1,67 +1,87 @@
-./env.sh
+#!/bin/bash
+set -e
 
-echo "========================================================"
-echo "Running on Mutagenicity Dataset"
-echo "========================================================"
+# Configuration
+MIN_SUP=0.20 # As per instructions
+HEURISTIC_SCRIPT="identify.py"
+CONVERT_SCRIPT="convert.py"
+CANDIDATE_SCRIPT="generate_candidates.py"
+SCORE_SCRIPT="score_calculator.py"
+RQ_SCRIPT="calculate_rq.py"
 
-DB_GRAPH="data/q3_datasets/Mutagenicity/graphs.txt"
-QUERY_GRAPH="data/query_dataset/muta_final_visible"
-PREFIX="muta"
+# ---- Helper Function ----
+run_pipeline() {
+    DATASET_NAME=$1
+    DB_PATH=$2
+    QUERY_PATH=$3
+    OUTPUT_PREFIX=$4
+    
+    echo "=========================================================="
+    echo "Running Pipeline for: $DATASET_NAME"
+    echo "Database: $DB_PATH"
+    echo "Queries:  $QUERY_PATH"
+    echo "Support:  $MIN_SUP"
+    echo "=========================================================="
 
-# 1. Identify discriminative subgraphs
-echo "[${PREFIX}] Identifying discriminative subgraphs..."
-./identify.sh ${DB_GRAPH} ${PREFIX}_discriminative.pkl
+    # Derived Paths
+    RQ_FILE="${OUTPUT_PREFIX}_rq.pkl"
+    DISC_PKL="${OUTPUT_PREFIX}_discriminative.pkl"
+    DB_FEAT="${OUTPUT_PREFIX}_db_features.npy"
+    QUERY_FEAT="${OUTPUT_PREFIX}_query_features.npy"
+    CANDIDATES="${OUTPUT_PREFIX}_candidates.txt"
+    
+    # 0. Pre-calculate Rq Sets (Not timed, ground truth)
+    if [ ! -f "$RQ_FILE" ]; then
+        echo "Calculating Rq Sets (Ground Truth)..."
+        python3 "$RQ_SCRIPT" "$DB_PATH" "$QUERY_PATH" "$RQ_FILE"
+    else
+        echo "Rq Sets found ($RQ_FILE), skipping calculation."
+    fi
 
-# 2. Convert Database
-echo "[${PREFIX}] Converting database graphs..."
-./convert.sh ${DB_GRAPH} ${PREFIX}_discriminative.pkl ${PREFIX}_db_features.npy
+    # 1. Timed Execution Block (Identification + Conversion + Generation)
+    echo "Starting TIMED execution..."
+    START_TIME=$(date +%s.%N)
+    
+    # A. Identification
+    echo " -> Identifying discriminative subgraphs..."
+    python3 "$HEURISTIC_SCRIPT" "$DB_PATH" "$DISC_PKL" "$MIN_SUP"
+    
+    # B. Conversion
+    echo " -> Generating Database Features..."
+    python3 "$CONVERT_SCRIPT" "$DB_PATH" "$DISC_PKL" "$DB_FEAT"
+    
+    echo " -> Generating Query Features..."
+    python3 "$CONVERT_SCRIPT" "$QUERY_PATH" "$DISC_PKL" "$QUERY_FEAT"
+    
+    # C. Candiates
+    echo " -> Generating Candidates..."
+    python3 "$CANDIDATE_SCRIPT" "$DB_FEAT" "$QUERY_FEAT" "$CANDIDATES"
+    
+    END_TIME=$(date +%s.%N)
+    RUNTIME=$(echo "$END_TIME - $START_TIME" | bc)
+    
+    echo "TIMED execution finished."
+    echo "Runtime (Identify + Convert + Generate): $RUNTIME seconds"
+    
+    # 2. Scoring (Not timed)
+    echo "Calculating Score..."
+    python3 "$SCORE_SCRIPT" "$CANDIDATES" "$RQ_FILE"
+    
+    echo "Pipeline for $DATASET_NAME completed."
+    echo ""
+}
 
-# 3. Convert Queries
-echo "[${PREFIX}] Converting query graphs..."
-./convert.sh ${QUERY_GRAPH} ${PREFIX}_discriminative.pkl ${PREFIX}_query_features.npy
+# ---- Mutagenicity ----
+MUTA_DB="data/q3_datasets/Mutagenicity/graphs.txt"
+MUTA_QUERY="data/query_dataset/muta_final_visible"
+MUTA_OUT="output_muta"
 
-# 4. Generate Candidates
-echo "[${PREFIX}] Generating candidates..."
-./generate_candidates.sh ${PREFIX}_db_features.npy ${PREFIX}_query_features.npy ${PREFIX}_candidates.txt
+run_pipeline "Mutagenicity" "$MUTA_DB" "$MUTA_QUERY" "$MUTA_OUT"
 
-# 5. Calculate Rq (Ground Truth)
-echo "[${PREFIX}] Calculating ground truth (Rq)..."
-python3 calculate_rq.py ${DB_GRAPH} ${QUERY_GRAPH} ${PREFIX}_rq.pkl
+# ---- NCI-H23 ----
+# Use full graph set
+NCI_DB="data/q3_datasets/NCI-H23/graphs.txt"
+NCI_QUERY="data/query_dataset/nci_final_visible"
+NCI_OUT="output_nci"
 
-# 6. Calculate Score
-echo "[${PREFIX}] Calculating score..."
-python3 score_calculator.py ${PREFIX}_candidates.txt ${PREFIX}_rq.pkl
-
-
-echo ""
-echo "========================================================"
-echo "Running on NCI-H23 Dataset"
-echo "========================================================"
-
-DB_GRAPH="data/q3_datasets/NCI-H23/graphs.txt"
-QUERY_GRAPH="data/query_dataset/nci_final_visible"
-PREFIX="nci"
-
-# 1. Identify discriminative subgraphs
-echo "[${PREFIX}] Identifying discriminative subgraphs..."
-./identify.sh ${DB_GRAPH} ${PREFIX}_discriminative.pkl
-
-# 2. Convert Database
-echo "[${PREFIX}] Converting database graphs..."
-./convert.sh ${DB_GRAPH} ${PREFIX}_discriminative.pkl ${PREFIX}_db_features.npy
-
-# 3. Convert Queries
-echo "[${PREFIX}] Converting query graphs..."
-./convert.sh ${QUERY_GRAPH} ${PREFIX}_discriminative.pkl ${PREFIX}_query_features.npy
-
-# 4. Generate Candidates
-echo "[${PREFIX}] Generating candidates..."
-./generate_candidates.sh ${PREFIX}_db_features.npy ${PREFIX}_query_features.npy ${PREFIX}_candidates.txt
-
-# 5. Calculate Rq (Ground Truth)
-echo "[${PREFIX}] Calculating ground truth (Rq)..."
-python3 calculate_rq.py ${DB_GRAPH} ${QUERY_GRAPH} ${PREFIX}_rq.pkl
-
-# 6. Calculate Score
-echo "[${PREFIX}] Calculating score..."
-python3 score_calculator.py ${PREFIX}_candidates.txt ${PREFIX}_rq.pkl
+run_pipeline "NCI-H23" "$NCI_DB" "$NCI_QUERY" "$NCI_OUT"

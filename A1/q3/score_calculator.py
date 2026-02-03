@@ -1,6 +1,6 @@
+#!/usr/bin/env python3
 import sys
 import pickle
-import numpy as np
 
 def parse_candidates(file_path):
     """
@@ -54,24 +54,12 @@ def main():
     # Calculate scores
     scores = []
     
-    # Assuming query IDs correspond to indices 0..N-1 or are consistent
-    # The assignment example says "q # 1", "q # 2". Let's assume 1-based or whatever is in the file.
-    # calculate_rq.py used 0-based index from the list of queries. 
-    # parse_graphs usually returns list, so query 0 is the first graph.
-    # We need to ensure alignment.
-    # IF the input queries file has sequential queries, then query index i corresponds to q # (i) or (i+1).
-    # Let's inspect candidates.dat later to be sure of the ID format. 
-    # Usually students output "q # 0" or "q # 1". 
-    # Let's align by intersection of keys if possible, or just iterate if keys match.
-    
     common_ids = sorted(list(set(candidates_counts.keys()) & set(rq_counts.keys())))
     
     if not common_ids:
         print("Warning: No common query IDs found between candidates and Rq file.")
         print(f"Candidate keys sample: {list(candidates_counts.keys())[:5]}")
         print(f"Rq keys sample: {list(rq_counts.keys())[:5]}")
-        # Try adjusting Rq keys if they are 0-based and candidates are 0-based or 1-based
-        # If Rq keys are 0..N-1, and Candidates are 0..N-1, we are good.
         pass
 
     print(f"Calculating scores for {len(common_ids)} queries...")
@@ -85,11 +73,14 @@ def main():
         rq = rq_counts[qid]
         cq = candidates_counts[qid]
         
+        if isinstance(rq, (list, set, tuple)):
+            rq = len(rq)
+
         if cq == 0:
             if rq == 0:
-                score = 1.0 # Perfect filtering (none exist, none returned) - arguably 1
+                score = 1.0
             else:
-                score = 0.0 # Candidates missed Rq! This is bad. Violation of Cq ⊇ Rq
+                score = 0.0
                 print(f"CRITICAL ERROR: q{qid} has |Rq|={rq} but |Cq|=0. Invalid candidate set.")
         else:
             score = rq / cq
@@ -97,7 +88,6 @@ def main():
         scores.append(score)
         total_score += score
         
-        # Print first few or all? Let's print first 10 and then summary
         if len(scores) <= 50:
              print(f"{qid:<10} | {rq:<10} | {cq:<10} | {score:.4f}")
 
