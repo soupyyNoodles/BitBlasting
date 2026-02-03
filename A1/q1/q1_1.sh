@@ -29,7 +29,7 @@ fi
 
 # Create output directory and logs subdirectory if they don't exist
 mkdir -p "$OUTPUT_DIR"
-LOGS_DIR="$OUTPUT_DIR/logs"
+LOGS_DIR="$OUTPUT_DIR"_logs
 mkdir -p "$LOGS_DIR"
 
 # Support thresholds (in percentage)

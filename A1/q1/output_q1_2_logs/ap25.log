@@ -1,8 +1,8 @@
 apriori/apriori/src/apriori - find frequent item sets with the apriori algorithm
 version 6.31 (2022.11.22)        (c) 1996-2022   Christian Borgelt
-reading ./generated_transactions.dat ... [26 item(s), 15000 transaction(s)] done [0.01s].
+reading generated_transactions.dat ... [26 item(s), 15000 transaction(s)] done [0.02s].
 filtering, sorting and recoding items ... [20 item(s)] done [0.00s].
 sorting and reducing transactions ... [2368/15000 transaction(s)] done [0.01s].
 building transaction tree ... [4242 node(s)] done [0.00s].
-checking subsets of size 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 done [1.82s].
-writing ./output_q1_2/ap10 ... [1048575 set(s)] done [0.21s].
+checking subsets of size 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20 done [1.80s].
+writing ./output_q1_2/ap25 ... [1048575 set(s)] done [0.20s].
