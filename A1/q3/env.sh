@@ -19,7 +19,7 @@ install_pkg() {
 }
 
 install_pkg "gspan-mining" "gspan_mining"
-install_pkg "networkx" "networkx"
+install_pkg "rustworkx" "rustworkx"
 install_pkg "numpy" "numpy"
 install_pkg "pandas" "pandas"
 install_pkg "joblib" "joblib"
