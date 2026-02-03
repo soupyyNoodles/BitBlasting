@@ -43,9 +43,9 @@ The dataset is dense and exhibits complex item correlations typical of real-worl
 
 \subsection{Experimental Setup}
 
-Both algorithms were intended to be executed at five different support thresholds: 5\%, 10\%, 25\%, 50\%, and 90\%. In the collected run artifacts for WebDocs (stored under \texttt{A1/q1/output\_q1\_1/}), we have results for 10\%, 25\%, 50\% and 90\%; the 5\% WebDocs run is not present (the corresponding output/log files are absent). Since WebDocs is very large, 5\% is typically the most expensive regime and is commonly run on a more powerful machine (as also suggested in the assignment tips).
+Both algorithms were intended to be executed at five different support thresholds: 5\%, 10\%, 25\%, 50\%, and 90\%. The aggregated wall-clock times for these runs are taken from \texttt{A1/q1/output\_q1\_1\_logs/results.txt}.
 
-In our attempt to run WebDocs at 5\% support, the pipeline hit a timeout (i.e., exceeded the allowed runtime budget) and therefore did not produce complete tool logs or outputs for that threshold. Consequently, we explicitly mark the 5\% datapoint as unavailable and focus the detailed analysis on the completed thresholds.
+Since WebDocs is very large, 5\% is typically the most expensive regime. In our 5\% run, Apriori exceeded the runtime budget and timed out (recorded as a \textasciitilde3600s cap in \texttt{results.txt}), leaving an empty output file. FP-Growth, however, completed at 5\% support; its output file (\texttt{fp5}) was not committed to the repository due to large size, but the end-to-end runtime is still available from \texttt{results.txt}.
 
 The runtime measurements reported below include all preprocessing steps (reading, filtering, item recoding, transaction reduction, and tree construction where applicable) as well as the core itemset mining computation and output writing.
 
@@ -59,22 +59,22 @@ The runtime measurements reported below include all preprocessing steps (reading
 \hline
 \textbf{Support (\%)} & \textbf{Apriori (s)} & \textbf{FP-Growth (s)} & \textbf{Speedup} \\
 \hline
-5 & --- & --- & --- \\
+5 & timeout ($\ge$3600.12) & 189.67 & --- \\
 \hline
-10 & 355.67 & 65.21 & 5.45\texttimes \\
+10 & 631.56 & 125.73 & 5.02\texttimes \\
 \hline
-25 & 21.28 & 21.74 & 0.98\texttimes \\
+25 & 39.71 & 39.31 & 1.01\texttimes \\
 \hline
-50 & 20.52 & 20.12 & 1.02\texttimes \\
+50 & 35.75 & 35.17 & 1.02\texttimes \\
 \hline
-90 & 19.96 & 18.21 & 1.10\texttimes \\
+90 & 34.33 & 34.24 & 1.00\texttimes \\
 \hline
 \end{tabular}
 \caption{Runtime Comparison on WebDocs Dataset}
 \label{tab:q1_1_results}
 \end{table}
 
-\noindent\textbf{Note:} The WebDocs 5\% datapoint is not available in the current run logs; the rest of the report focuses on the available thresholds.
+\noindent\textbf{Note:} At 5\% support, Apriori timed out; therefore a direct speedup value is not reported for that row.
 
 \subsubsection{Log-Derived Mining Statistics (WebDocs)}
 
@@ -90,7 +90,7 @@ Besides wall-clock runtimes, the tool logs provide additional signals that help 
 \hline
 \textbf{Support (\%)} & \textbf{Status} & \textbf{Items After Filter} & \textbf{Reduced Txns} & \textbf{Tree Nodes (Apriori)} & \textbf{\#Freq. Sets} \\
 \hline
-5  & timeout (no logs) & --- & --- & --- & --- \\
+5  & Apriori timeout; FP completed & 683 & 1,394,053 / 1,692,082 & 2,590,180 & --- \\
 \hline
 10 & completed & 262 & 1,319,600 / 1,692,082 & 2,317,962 & 217,767 \\
 \hline
@@ -109,7 +109,9 @@ Besides wall-clock runtimes, the tool logs provide additional signals that help 
 \subsubsection{Key Observations}
 
 \begin{enumerate}
-    \item \textbf{Dramatic speedup in the low-support regime:} At 10\% support, FP-Growth is approximately 5.45 times faster than Apriori (65.21s vs 355.67s). This is the most significant performance gap observed in the available datapoints.
+    \item \textbf{5\% is extremely hard for Apriori:} At 5\% support, Apriori exceeded the time budget and timed out (\textasciitilde3600s cap), while FP-Growth still completed in 189.67s. This highlights how quickly Apriori's candidate/subset-checking workload can blow up at low supports.
+
+    \item \textbf{Dramatic speedup in the low-support regime (completed runs):} At 10\% support, FP-Growth is about 5.02\texttimes faster than Apriori (125.73s vs 631.56s).
     
     \item \textbf{Convergence at high support:} As the support threshold increases to 25\%, 50\%, and 90\%, the performance difference diminishes. At these supports the number of frequent items/patterns collapses sharply, so both algorithms spend most time just reading and preprocessing the dataset.
     
@@ -124,19 +126,19 @@ The tool-generated logs provide a helpful breakdown. Two takeaways stand out:
 
 For example (WebDocs, 10\%):
 \begin{itemize}
-    \item \textbf{Apriori:} reading 17.84s; filtering 0.92s; reduction 2.21s; tree build 0.36s; subset checking 334.00s; output write 0.02s.
-    \item \textbf{FP-Growth:} reading 18.55s; filtering 1.10s; reduction 2.82s; output write (includes mining) 42.52s.
+    \item \textbf{Apriori:} reading 35.89s; filtering 2.08s; reduction 4.01s; tree build 0.68s; subset checking 588.59s; output write 0.04s.
+    \item \textbf{FP-Growth:} reading 34.61s; filtering 1.73s; reduction 4.23s; output write (includes mining) 83.71s.
 \end{itemize}
 
 \noindent\textbf{More detailed per-threshold interpretation (WebDocs).}
 \begin{itemize}
     \item \textbf{10\% (``hard'' regime):} 262 items survive filtering and 217,767 frequent itemsets are output. Apriori explores itemsets up to size 11 and spends 334s in subset checking, which is \emph{well over 90\%} of its log-reported runtime. FP-Growth, in contrast, spends the bulk of its time in the final ``writing'' phase (42.52s), which in Borgelt's implementation effectively includes the recursive mining plus output emission. The key point is that the mining workload is large (many patterns), and Apriori pays it as repeated candidate counting across levels.
     
-    \item \textbf{25\% (transition):} only 29 items survive filtering and only 413 frequent itemsets remain; Apriori now explores only up to size 6. The expensive part collapses: subset checking drops to 1.74s. Both algorithms become dominated by reading/parsing and preprocessing the large WebDocs file (\texttt{reading} alone is $\sim$18--19s).
+    \item \textbf{25\% (transition):} only 29 items survive filtering and only 413 frequent itemsets remain; Apriori now explores only up to size 6. The expensive part collapses sharply, and both algorithms become dominated by reading/parsing and preprocessing the large WebDocs file.
 
     \item \textbf{50\% (degenerate after reduction):} only 5 items survive filtering, and reduction collapses the dataset to just 32 transactions. Subset checking becomes essentially zero, and both algorithms look similar overall because they still must read the original dataset from disk to determine item supports.
 
-    \item \textbf{90\% (early termination):} both tools report \emph{no frequent items found} right after reading the dataset. This highlights an often-missed fact: even when the mining result is empty, there is still a fixed cost to stream and count item occurrences in the input. Hence the runtime remains $\sim$18--20s despite producing no itemsets.
+    \item \textbf{90\% (early termination):} both tools report \emph{no frequent items found} right after reading the dataset. Even when the mining result is empty, there is still a fixed cost to stream and count item occurrences in the input, hence the runtime remains on the order of tens of seconds despite producing no itemsets.
 \end{itemize}
 
 \noindent\textbf{Why the ``transaction reduction'' lines matter.} Both tools sort and reduce transactions after filtering/recoding items. This step removes redundant/duplicate transactions and can dramatically shrink the working database (e.g., WebDocs reduces from 1,692,082 to 1,319,600 transactions at 10\%). Lower supports keep more items, which increases transaction lengths but also increases opportunities for redundancy removal and compression in the internal representation (seen indirectly via the transaction-tree node counts in Apriori logs).
@@ -197,12 +199,12 @@ The dramatic speedup at low support thresholds reflects the algorithmic differen
 
 \subsection{Runtime Plots (WebDocs)}
 
-Figure~\ref{fig:webdocs_plot} shows the runtime curve produced by the pipeline for the available thresholds.
+Figure~\ref{fig:webdocs_plot} shows the runtime curve produced by the pipeline for the measured thresholds (including the 5\% FP-Growth datapoint and the 5\% Apriori timeout cap).
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.80\linewidth]{../output_q1_1/plot.png}
-    \caption{Runtime comparison on WebDocs (available thresholds from \texttt{output\_q1\_1/results.txt}). X-axis: support threshold (\%). Y-axis: runtime (seconds).}
+    \caption{Runtime comparison on WebDocs (thresholds from \texttt{output\_q1\_1\_logs/results.txt}). X-axis: support threshold (\%). Y-axis: runtime (seconds).}
     \label{fig:webdocs_plot}
 \end{figure}
 
@@ -288,11 +290,11 @@ so \emph{every} subset becomes frequent. In our runs, the generator creates a 20
 \subsubsection{Observed Trends}
 
 \begin{enumerate}
-    \item \textbf{Consistent FP-Growth advantage:} FP-Growth maintains a significant speedup (6-8$\times$) across support levels 5-50\% on the synthetic dataset, compared to 5.45$\times$ at 10\% on WebDocs
+    \item \textbf{Consistent FP-Growth advantage:} FP-Growth maintains a significant speedup (6-8$\times$) across support levels 5-50\% on the synthetic dataset, compared to about 5.02$\times$ at 10\% on WebDocs (completed run).
     
     \item \textbf{Different speedup profiles:}
     \begin{itemize}
-        \item \textbf{WebDocs:} Speedup decreases sharply as support increases (5.45$\times$ $\to$ 1.10$\times$)
+        \item \textbf{WebDocs:} Speedup decreases sharply as support increases (\textasciitilde5.02$\times$ at 10\% $\to$ \textasciitilde1.00$\times$ at 90\%).
         \item \textbf{Synthetic:} Speedup remains relatively stable (6-8$\times$) across 5-50\% support, then drops dramatically at 90\%
     \end{itemize}
     

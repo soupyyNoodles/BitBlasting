@@ -27,8 +27,10 @@ if [ ! -f "$DATASET" ]; then
     exit 1
 fi
 
-# Create output directory if it doesn't exist
+# Create output directory and logs subdirectory if they don't exist
 mkdir -p "$OUTPUT_DIR"
+LOGS_DIR="$OUTPUT_DIR"_logs
+mkdir -p "$LOGS_DIR"
 
 # Support thresholds (in percentage)
 THRESHOLDS=(5 10 25 50 90)
@@ -46,14 +48,17 @@ for threshold in "${THRESHOLDS[@]}"; do
     # Time the execution
     START=$(python3 -c 'import time; print(time.time())')
     
-    "$APRIORI_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/ap${threshold}" > "$OUTPUT_DIR/ap${threshold}.log" 2>&1
+    timeout 3600 "$APRIORI_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/ap${threshold}" > "$LOGS_DIR/ap${threshold}.log" 2>&1
     STATUS=$?
-    if [ $STATUS -ne 0 ]; then
-        if grep -q "no (frequent) items found" "$OUTPUT_DIR/ap${threshold}.log"; then
+    if [ $STATUS -eq 124 ]; then
+        echo "  Apriori ${threshold}%: Timed out after 3600 seconds - generating empty output"
+        touch "$OUTPUT_DIR/ap${threshold}"
+    elif [ $STATUS -ne 0 ]; then
+        if grep -q "no (frequent) items found" "$LOGS_DIR/ap${threshold}.log"; then
             echo "  Apriori ${threshold}%: No frequent items found"
         else
-            echo "  Error: Apriori failed at ${threshold}% (see $OUTPUT_DIR/ap${threshold}.log)"
-            exit 1
+            echo "  Warning: Apriori failed at ${threshold}% (see $LOGS_DIR/ap${threshold}.log) - continuing with next threshold"
+            touch "$OUTPUT_DIR/ap${threshold}"
         fi
     fi
     
@@ -71,14 +76,17 @@ for threshold in "${THRESHOLDS[@]}"; do
     # Time the execution
     START=$(python3 -c 'import time; print(time.time())')
     
-    "$FP_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/fp${threshold}" > "$OUTPUT_DIR/fp${threshold}.log" 2>&1
+    timeout 3600 "$FP_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/fp${threshold}" > "$LOGS_DIR/fp${threshold}.log" 2>&1
     STATUS=$?
-    if [ $STATUS -ne 0 ]; then
-        if grep -q "no (frequent) items found" "$OUTPUT_DIR/fp${threshold}.log"; then
+    if [ $STATUS -eq 124 ]; then
+        echo "  FP-Growth ${threshold}%: Timed out after 3600 seconds - generating empty output"
+        touch "$OUTPUT_DIR/fp${threshold}"
+    elif [ $STATUS -ne 0 ]; then
+        if grep -q "no (frequent) items found" "$LOGS_DIR/fp${threshold}.log"; then
             echo "  FP-Growth ${threshold}%: No frequent items found"
         else
-            echo "  Error: FP-Growth failed at ${threshold}% (see $OUTPUT_DIR/fp${threshold}.log)"
-            exit 1
+            echo "  Warning: FP-Growth failed at ${threshold}% (see $LOGS_DIR/fp${threshold}.log) - continuing with next threshold"
+            touch "$OUTPUT_DIR/fp${threshold}"
         fi
     fi
     
@@ -89,16 +97,26 @@ for threshold in "${THRESHOLDS[@]}"; do
     echo "  FP-Growth ${threshold}%: ${RUNTIME}s"
 done
 
-# Save timing results to a file for Python plotting script
-RESULTS_FILE="$OUTPUT_DIR/results.txt"
+# Save timing results to a file in logs directory for Python plotting script
+RESULTS_FILE="$LOGS_DIR/results.txt"
 echo "thresholds,apriori_times,fp_times" > "$RESULTS_FILE"
 
 for i in "${!THRESHOLDS[@]}"; do
     echo "${THRESHOLDS[$i]},${APRIORI_TIMES[$i]},${FP_TIMES[$i]}" >> "$RESULTS_FILE"
 done
 
+# Get the directory of this script to find plot_results.py
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
 # Generate the plot using Python
 echo "Generating plot..."
-python3 plot_results.py "$RESULTS_FILE" "$OUTPUT_DIR/plot.png"
+python3 "$SCRIPT_DIR/plot_results.py" "$RESULTS_FILE" "$OUTPUT_DIR/plot.png"
+
+echo ""
+echo "Execution complete!"
+echo "Output directory: $OUTPUT_DIR"
+echo "  - Algorithm outputs: ap5, ap10, ap25, ap50, ap90, fp5, fp10, fp25, fp50, fp90"
+echo "  - Plot: plot.png"
+echo "  - Logs: logs/"
 
 echo "Done! Results saved to $OUTPUT_DIR"
