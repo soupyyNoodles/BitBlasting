@@ -46,12 +46,9 @@ for threshold in "${THRESHOLDS[@]}"; do
     # Time the execution
     START=$(python3 -c 'import time; print(time.time())')
     
-    timeout 3600 "$APRIORI_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/ap${threshold}" > "$OUTPUT_DIR/ap${threshold}.log" 2>&1
+    "$APRIORI_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/ap${threshold}" > "$OUTPUT_DIR/ap${threshold}.log" 2>&1
     STATUS=$?
-    if [ $STATUS -eq 124 ]; then
-        echo "  Apriori ${threshold}%: Timed out after 3600 seconds - generating empty output"
-        touch "$OUTPUT_DIR/ap${threshold}"
-    elif [ $STATUS -ne 0 ]; then
+    if [ $STATUS -ne 0 ]; then
         if grep -q "no (frequent) items found" "$OUTPUT_DIR/ap${threshold}.log"; then
             echo "  Apriori ${threshold}%: No frequent items found"
         else
@@ -74,12 +71,9 @@ for threshold in "${THRESHOLDS[@]}"; do
     # Time the execution
     START=$(python3 -c 'import time; print(time.time())')
     
-    timeout 3600 "$FP_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/fp${threshold}" > "$OUTPUT_DIR/fp${threshold}.log" 2>&1
+    "$FP_EXEC" -s${threshold} "$DATASET" "$OUTPUT_DIR/fp${threshold}" > "$OUTPUT_DIR/fp${threshold}.log" 2>&1
     STATUS=$?
-    if [ $STATUS -eq 124 ]; then
-        echo "  FP-Growth ${threshold}%: Timed out after 3600 seconds - generating empty output"
-        touch "$OUTPUT_DIR/fp${threshold}"
-    elif [ $STATUS -ne 0 ]; then
+    if [ $STATUS -ne 0 ]; then
         if grep -q "no (frequent) items found" "$OUTPUT_DIR/fp${threshold}.log"; then
             echo "  FP-Growth ${threshold}%: No frequent items found"
         else
