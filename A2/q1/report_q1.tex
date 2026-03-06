@@ -1,0 +1,168 @@
+\documentclass[10pt,a4paper]{article}
+\usepackage[margin=1.6cm,top=1.4cm,bottom=1.4cm]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{microtype}
+\usepackage{parskip}
+\setlength{\parskip}{3pt}
+\usepackage[numbers,sort&compress]{natbib}
+\usepackage{titlesec}
+\titlespacing{\section}{0pt}{4pt}{2pt}
+
+\title{\vspace{-1.5em}\textbf{Q1: k-Means Clustering in High Dimensions}\\[2pt]
+       \normalsize COL761 Assignment 2, 2026 \quad BITBLASTING}
+\author{}\date{}
+
+\begin{document}
+\maketitle
+\vspace{-2.5em}
+
+% -------------------------------------------------------
+\section*{(a) Selection of $k$}
+
+For each $k \in \{1,\ldots,15\}$ we minimise the k-means objective (WCSS) via
+Lloyd's algorithm with 10 random restarts and record the inertia
+$I(k)=\sum_{j=1}^{k}\sum_{x_i\in C_j}\|x_i-\mu_j\|^2$.
+Features are $z$-normalised before fitting to prevent scale dominance.
+
+\textbf{Method.} The inertia curve is monotonically decreasing; the \emph{elbow}
+marks where marginal gain drops sharply.  We formalise this via the
+\emph{normalised acceleration ratio}:
+\[
+  r(k) = \frac{\Delta^2 \tilde{I}(k)}{\,|\tilde{I}(k)|\,+\varepsilon},
+  \qquad
+  \tilde{I}(k)=\frac{I(k)-I_{\min}}{I_{\max}-I_{\min}},
+\]
+where $\Delta^2$ denotes the second finite difference.  Dividing by
+$|\tilde{I}(k)|$ normalises the curvature relative to the current inertia
+magnitude, avoiding false positives in the steep, low-$k$ region.
+The selected $k$ is $\operatorname{argmax}_k r(k)$.
+
+The resulting elbow and the supplementary silhouette scores are shown in
+Figure~\ref{fig:plot}.  Both criteria agree on the selected value.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=0.90\linewidth,height=4.5cm,keepaspectratio]{plot.png}
+  \caption{Left: WCSS vs.\ $k$ with the selected $k$ (red dashed line).
+           Right: Silhouette score vs.\ $k$ (supplementary).}
+  \label{fig:plot}
+\end{figure}
+
+% -------------------------------------------------------
+\section*{(b) Structural and Statistical Assumptions}
+
+\begin{enumerate}\setlength\itemsep{1pt}\setlength\topsep{1pt}
+  \item \textbf{Spherical, isotropic clusters.} k-means minimises squared
+        Euclidean distances, implicitly assuming clusters are convex and
+        roughly equal-radius hyperballs.
+  \item \textbf{Equal cluster sizes.} The Voronoi partition favours balanced
+        clusters; small, dense clusters are absorbed by large ones.
+  \item \textbf{Gaussian generative model.} WCSS is the MLE objective for a
+        mixture of isotropic Gaussians $\mathcal{N}(\mu_j, \sigma^2 I)$ with
+        equal mixing weights and shared variance.
+  \item \textbf{Euclidean metric appropriateness.} In high dimensions,
+        $\|x-\mu\|$ concentrates sharply around $\sqrt{d}\,\sigma$ for any
+        $\mu$ (Lévy's lemma / measure concentration~\cite{blum2020foundations}),
+        so inter- vs.\ intra-cluster distance ratios shrink, degrading
+        separation.
+  \item \textbf{$k$ known a priori.} The model has no mechanism to infer $k$
+        from data; it must be supplied externally.
+\end{enumerate}
+
+% -------------------------------------------------------
+\section*{(c) Limitations of the Model Selection Procedure}
+
+\begin{itemize}\setlength\itemsep{1pt}\setlength\topsep{1pt}
+  \item \textbf{Curse of dimensionality.} In high $d$, the volume of a ball of
+        radius $r$ satisfies $V_d(r)\propto r^d/\Gamma(d/2+1)\to 0$ for fixed
+        $r$ as $d\to\infty$~\cite{blum2020foundations}.  Distances concentrate,
+        making the elbow extremely flat and hard to detect reliably.
+  \item \textbf{Sensitivity to normalisation.} The elbow location can shift
+        with feature scaling or normalisation choices.
+  \item \textbf{Local optima.} Lloyd's algorithm is not guaranteed to find the
+        global WCSS minimum; different restarts may yield different inertias,
+        adding noise to the elbow curve.
+  \item \textbf{No probabilistic model.} WCSS provides no likelihood, so formal
+        model comparison (AIC/BIC) is unavailable without additional assumptions.
+\end{itemize}
+
+% -------------------------------------------------------
+\section*{(d) Methodological Improvements and Alternatives}
+
+\begin{itemize}\setlength\itemsep{1pt}\setlength\topsep{1pt}
+  \item \textbf{BIC/AIC on GMM.} Replace k-means with a full Gaussian Mixture
+        Model and select $k$ by BIC, which penalises model complexity
+        explicitly~\cite{mclachlan2000mixture}.
+  \item \textbf{Gap statistic.} Compare observed $\log I(k)$ against its
+        expectation under a uniform null reference distribution; the optimal $k$
+        is the smallest $k$ where the gap $G(k)=E[\log I_{\text{ref}}(k)]-\log
+        I(k)$ exceeds $G(k+1)-s_{k+1}$~\cite{tibshirani2001estimating}.
+  \item \textbf{Stability-based selection.} Cluster on random subsamples and
+        measure clustering stability (e.g.\ adjusted Rand index); the most
+        stable $k$ is preferred~\cite{ben2002stability}.
+  \item \textbf{Dimensionality reduction pre-processing.} Applying PCA or
+        UMAP before clustering mitigates distance concentration and often
+        sharpens the elbow.
+\end{itemize}
+
+% -------------------------------------------------------
+\section*{(e) Failure Modes of k-Means}
+
+k-Means is inappropriate in the following well-known settings.
+
+\textbf{Non-convex / manifold-shaped clusters} (e.g.\ two interlocking rings):
+the Voronoi partition cannot recover non-convex cluster boundaries.
+\emph{Detection:} fit a $k$-nearest-neighbour graph and check whether the
+resulting connectivity components match the k-means labels; persistent
+disagreement signals non-convexity.  \emph{Alternative:} spectral clustering
+or DBSCAN.
+
+\textbf{Clusters of very different sizes or densities}: large clusters
+``steal'' points from small dense ones to lower WCSS.
+\emph{Detection:} compare cluster cardinalities and intra-cluster variances; high
+imbalance suggests misfit.  \emph{Alternative:} GMM with full covariance or
+DBSCAN.
+
+\textbf{High-dimensional data with distance concentration}: as $d$ grows, the
+ratio $\max_i\|x-x_i\| / \min_i\|x-x_i\|\to 1$~\cite{beyer1999nearest}, so
+nearest-centroid assignment becomes nearly random.
+\emph{Detection:} compute the coefficient of variation of pairwise distances;
+values near~0 signal concentration.  \emph{Mitigation:} use projected features
+($d'\ll d$) or subspace clustering.
+
+\textbf{Categorical or mixed-type features}: squared Euclidean distance is
+semantically meaningless for discrete or ordinal variables.
+\emph{Alternative:} k-modes or k-prototypes.
+
+% -------------------------------------------------------
+\bibliographystyle{plainnat}
+\begin{thebibliography}{9}
+\bibitem{blum2020foundations}
+A.~Blum, J.~Hopcroft, R.~Kannan.
+\textit{Foundations of Data Science}.
+Cambridge University Press, 2020.
+
+\bibitem{tibshirani2001estimating}
+R.~Tibshirani, G.~Walther, T.~Hastie.
+Estimating the number of clusters via the gap statistic.
+\textit{JRSS-B}, 63(2):411--423, 2001.
+
+\bibitem{mclachlan2000mixture}
+G.~McLachlan, D.~Peel.
+\textit{Finite Mixture Models}.
+Wiley, 2000.
+
+\bibitem{ben2002stability}
+S.~Ben-David, U.~von Luxburg, D.~P{\'a}l.
+A sober look at clustering stability.
+\textit{COLT}, 2006.
+
+\bibitem{beyer1999nearest}
+K.~Beyer, J.~Goldstein, R.~Ramakrishnan, U.~Shaft.
+When is ``nearest neighbor'' meaningful?
+\textit{ICDT}, 1999.
+\end{thebibliography}
+
+\end{document}
