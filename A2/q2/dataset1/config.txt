@@ -1,0 +1,3 @@
+k 50
+num_sim 50
+hops -1
