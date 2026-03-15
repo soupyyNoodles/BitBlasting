@@ -7,8 +7,8 @@ Usage:
     python3 Q1.py <path_to_dataset>.npy  # loads from .npy file
 
 Outputs:
-    - plot.png  : metrics plot with optimal k marked
-    - stdout    : single integer, the optimal k
+    - plot.png  : objective-value plot(s) with optimal k marked
+    - stdout    : one optimal k for .npy input, or one line per API dataset
 """
 
 import sys
@@ -104,38 +104,37 @@ def find_optimal_k(ks, inertias, silhouettes):
     return elbow_k
 
 
-def make_plot(ks, inertias, silhouettes, optimal_k, output_path="plot.png"):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
+def make_plot(results, output_path="plot.png"):
+    """
+    results: list of tuples (dataset_label, ks, inertias, optimal_k)
+    """
+    n = len(results)
+    fig, axes = plt.subplots(1, n, figsize=(7 * n, 5), squeeze=False)
+    axes = axes[0]
     fig.suptitle("K-Means Objective Value vs Number of Clusters", fontsize=13)
 
-    # --- Primary: Inertia (WCSS) / Elbow plot ---
-    # This is the plot explicitly required by the assignment.
-    ax1.plot(ks, inertias, "b-o", markersize=5, linewidth=1.5, label="Objective value (WCSS)")
-    ax1.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
-                label=f"Selected k = {optimal_k}")
-    ax1.set_xlabel("Number of Clusters (k)", fontsize=11)
-    ax1.set_ylabel("K-Means Objective Value (WCSS)", fontsize=11)
-    ax1.set_title("Objective Value vs k  (Elbow Method)", fontsize=12)
-    ax1.set_xticks(ks)
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
-
-    # --- Supplementary: Silhouette score (undefined for k=1, skip that point) ---
-    valid_ks  = [k for k, s in zip(ks, silhouettes) if not np.isnan(s)]
-    valid_sil = [s for s in silhouettes if not np.isnan(s)]
-    ax2.plot(valid_ks, valid_sil, "g-s", markersize=5, linewidth=1.5, label="Silhouette Score")
-    ax2.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
-                label=f"Selected k = {optimal_k}")
-    ax2.set_xlabel("Number of Clusters (k)", fontsize=11)
-    ax2.set_ylabel("Silhouette Score", fontsize=11)
-    ax2.set_title("Silhouette Analysis (supplementary)", fontsize=12)
-    ax2.set_xticks(valid_ks)
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
+    for ax, (dataset_label, ks, inertias, optimal_k) in zip(axes, results):
+        ax.plot(ks, inertias, "b-o", markersize=5, linewidth=1.5, label="Objective value (WCSS)")
+        ax.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
+                   label=f"Selected k = {optimal_k}")
+        ax.set_xlabel("Number of Clusters (k)", fontsize=11)
+        ax.set_ylabel("K-Means Objective Value (WCSS)", fontsize=11)
+        ax.set_title(f"Dataset {dataset_label}: Objective Value vs k", fontsize=12)
+        ax.set_xticks(ks)
+        ax.legend()
+        ax.grid(True, alpha=0.3)
 
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
+
+
+def analyze_dataset(X: np.ndarray):
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+    ks, inertias, silhouettes = compute_metrics(X_scaled)
+    optimal_k = find_optimal_k(ks, inertias, silhouettes)
+    return ks, inertias, optimal_k
 
 
 def main():
@@ -145,30 +144,34 @@ def main():
 
     arg = sys.argv[1]
 
-    # Determine input mode
+    # API mode: keep the same input method (dataset_num), but evaluate and plot
+    # both assignment datasets in one file.
+    if arg in ("1", "2"):
+        dataset_ids = [1, 2]
+        results = []
+        for dataset_id in dataset_ids:
+            X = load_from_api(dataset_id)
+            ks, inertias, optimal_k = analyze_dataset(X)
+            results.append((dataset_id, ks, inertias, optimal_k))
+
+        make_plot(results, output_path="plot.png")
+
+        for dataset_id, _, _, optimal_k in results:
+            print(f"dataset_{dataset_id} {optimal_k}")
+        return
+
+    # Single-dataset mode (kept for compatibility)
     if arg.endswith(".npy"):
         X = load_from_npy(arg)
-    elif arg in ("1", "2"):
-        X = load_from_api(int(arg))
-    else:
-        # Try as .npy path anyway
-        X = load_from_npy(arg)
+        ks, inertias, optimal_k = analyze_dataset(X)
+        make_plot([("Custom", ks, inertias, optimal_k)], output_path="plot.png")
+        print(optimal_k)
+        return
 
-    # Standardise features — essential before k-means, especially in high
-    # dimensions where feature scales can dominate distance computations.
-    scaler = StandardScaler()
-    X_scaled = scaler.fit_transform(X)
-
-    # Compute clustering metrics
-    ks, inertias, silhouettes = compute_metrics(X_scaled)
-
-    # Determine optimal k
-    optimal_k = find_optimal_k(ks, inertias, silhouettes)
-
-    # Generate plot
-    make_plot(ks, inertias, silhouettes, optimal_k, output_path="plot.png")
-
-    # Output optimal k to stdout
+    # Try as .npy path anyway
+    X = load_from_npy(arg)
+    ks, inertias, optimal_k = analyze_dataset(X)
+    make_plot([("Custom", ks, inertias, optimal_k)], output_path="plot.png")
     print(optimal_k)
 
 
