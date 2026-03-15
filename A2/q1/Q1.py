@@ -35,7 +35,7 @@ RANDOM_STATE = 42
 
 
 def load_from_api(dataset_num: int) -> np.ndarray:
-    url = f"http://10.208.23.248:3000/dataset?student_id=cs1230041&dataset_num={dataset_num}"
+    url = f"http://hulk.cse.iitd.ac.in:3000/dataset?student_id=cs1230041&dataset_num={dataset_num}"
     with urllib.request.urlopen(url) as response:
         raw_data = response.read().decode("utf-8")
         data = json.loads(raw_data)
