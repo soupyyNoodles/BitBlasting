@@ -7,8 +7,11 @@ Usage:
     python3 Q1.py <path_to_dataset>.npy  # loads from .npy file
 
 Outputs:
-    - plot.png  : metrics plot with optimal k marked
+    - plot.png  : objective plot(s) with selected k marked
     - stdout    : single integer, the optimal k
+
+In API mode, plot.png contains subplots for dataset 1 and dataset 2
+with explicit subplot titles (clarification-compliant).
 """
 
 import sys
@@ -26,6 +29,8 @@ from sklearn.preprocessing import StandardScaler
 
 warnings.filterwarnings("ignore")
 
+STUDENT_ID = "2023EE10968"
+API_BASE_URL = "http://hulk.cse.iitd.ac.in:3000/dataset"
 
 K_MIN = 1
 K_MAX = 15
@@ -34,8 +39,8 @@ MAX_ITER = 300
 RANDOM_STATE = 42
 
 
-def load_from_api(dataset_num: int) -> np.ndarray:
-    url = f"http://10.208.23.248:3000/dataset?student_id=cs1230041&dataset_num={dataset_num}"
+def load_from_api(dataset_num: int, student_id: str = STUDENT_ID) -> np.ndarray:
+    url = f"{API_BASE_URL}?student_id={student_id}&dataset_num={dataset_num}"
     with urllib.request.urlopen(url) as response:
         raw_data = response.read().decode("utf-8")
         data = json.loads(raw_data)
@@ -104,35 +109,46 @@ def find_optimal_k(ks, inertias, silhouettes):
     return elbow_k
 
 
-def make_plot(ks, inertias, silhouettes, optimal_k, output_path="plot.png"):
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 5))
-    fig.suptitle("K-Means Objective Value vs Number of Clusters", fontsize=13)
+def _plot_objective(ax, ks, inertias, optimal_k, title):
+    ax.plot(ks, inertias, "b-o", markersize=5, linewidth=1.5, label="Objective value (WCSS)")
+    ax.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
+               label=f"Selected k = {optimal_k}")
+    ax.set_xlabel("Number of Clusters (k)", fontsize=10)
+    ax.set_ylabel("K-Means Objective Value (WCSS)", fontsize=10)
+    ax.set_title(title, fontsize=11)
+    ax.set_xticks(ks)
+    ax.legend(fontsize=9)
+    ax.grid(True, alpha=0.3)
 
-    # --- Primary: Inertia (WCSS) / Elbow plot ---
-    # This is the plot explicitly required by the assignment.
-    ax1.plot(ks, inertias, "b-o", markersize=5, linewidth=1.5, label="Objective value (WCSS)")
-    ax1.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
-                label=f"Selected k = {optimal_k}")
-    ax1.set_xlabel("Number of Clusters (k)", fontsize=11)
-    ax1.set_ylabel("K-Means Objective Value (WCSS)", fontsize=11)
-    ax1.set_title("Objective Value vs k  (Elbow Method)", fontsize=12)
-    ax1.set_xticks(ks)
-    ax1.legend()
-    ax1.grid(True, alpha=0.3)
 
-    # --- Supplementary: Silhouette score (undefined for k=1, skip that point) ---
-    valid_ks  = [k for k, s in zip(ks, silhouettes) if not np.isnan(s)]
-    valid_sil = [s for s in silhouettes if not np.isnan(s)]
-    ax2.plot(valid_ks, valid_sil, "g-s", markersize=5, linewidth=1.5, label="Silhouette Score")
-    ax2.axvline(x=optimal_k, color="red", linestyle="--", linewidth=1.5,
-                label=f"Selected k = {optimal_k}")
-    ax2.set_xlabel("Number of Clusters (k)", fontsize=11)
-    ax2.set_ylabel("Silhouette Score", fontsize=11)
-    ax2.set_title("Silhouette Analysis (supplementary)", fontsize=12)
-    ax2.set_xticks(valid_ks)
-    ax2.legend()
-    ax2.grid(True, alpha=0.3)
+def make_api_plot(results_by_dataset, output_path="plot.png"):
+    """
+    Safest handling for assignment clarification:
+    plot both API datasets in one file using subplots with explicit titles.
+    """
+    fig, axes = plt.subplots(1, 2, figsize=(12, 5))
+    fig.suptitle(
+        f"K-Means Objective Curves (student_id={STUDENT_ID})",
+        fontsize=13
+    )
 
+    for ax, dataset_num in zip(axes, [1, 2]):
+        if dataset_num in results_by_dataset:
+            ks, inertias, _silhouettes, optimal_k = results_by_dataset[dataset_num]
+            _plot_objective(ax, ks, inertias, optimal_k, f"Dataset {dataset_num}")
+        else:
+            ax.set_title(f"Dataset {dataset_num} (unavailable)", fontsize=11)
+            ax.axis("off")
+
+    plt.tight_layout()
+    plt.savefig(output_path, dpi=150, bbox_inches="tight")
+    plt.close()
+
+
+def make_single_dataset_plot(ks, inertias, optimal_k, output_path="plot.png"):
+    fig, ax = plt.subplots(1, 1, figsize=(7.2, 5))
+    fig.suptitle("K-Means Objective Curve", fontsize=13)
+    _plot_objective(ax, ks, inertias, optimal_k, "Input .npy dataset")
     plt.tight_layout()
     plt.savefig(output_path, dpi=150, bbox_inches="tight")
     plt.close()
@@ -148,8 +164,45 @@ def main():
     # Determine input mode
     if arg.endswith(".npy"):
         X = load_from_npy(arg)
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        ks, inertias, silhouettes = compute_metrics(X_scaled)
+        optimal_k = find_optimal_k(ks, inertias, silhouettes)
+        make_single_dataset_plot(ks, inertias, optimal_k, output_path="plot.png")
+        print(optimal_k)
+        return
     elif arg in ("1", "2"):
-        X = load_from_api(int(arg))
+        requested_dataset = int(arg)
+        results_by_dataset = {}
+
+        # Always compute requested dataset (required output k).
+        X_req = load_from_api(requested_dataset)
+        scaler_req = StandardScaler()
+        X_req_scaled = scaler_req.fit_transform(X_req)
+        ks_req, inertias_req, silhouettes_req = compute_metrics(X_req_scaled)
+        k_req = find_optimal_k(ks_req, inertias_req, silhouettes_req)
+        results_by_dataset[requested_dataset] = (
+            ks_req, inertias_req, silhouettes_req, k_req
+        )
+
+        # For clarification compliance, try to also include the other API dataset.
+        other_dataset = 2 if requested_dataset == 1 else 1
+        try:
+            X_other = load_from_api(other_dataset)
+            scaler_other = StandardScaler()
+            X_other_scaled = scaler_other.fit_transform(X_other)
+            ks_other, inertias_other, silhouettes_other = compute_metrics(X_other_scaled)
+            k_other = find_optimal_k(ks_other, inertias_other, silhouettes_other)
+            results_by_dataset[other_dataset] = (
+                ks_other, inertias_other, silhouettes_other, k_other
+            )
+        except Exception:
+            # Keep execution robust if only requested dataset can be fetched.
+            pass
+
+        make_api_plot(results_by_dataset, output_path="plot.png")
+        print(k_req)
+        return
     else:
         # Try as .npy path anyway
         X = load_from_npy(arg)
@@ -166,7 +219,7 @@ def main():
     optimal_k = find_optimal_k(ks, inertias, silhouettes)
 
     # Generate plot
-    make_plot(ks, inertias, silhouettes, optimal_k, output_path="plot.png")
+    make_single_dataset_plot(ks, inertias, optimal_k, output_path="plot.png")
 
     # Output optimal k to stdout
     print(optimal_k)

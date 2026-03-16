@@ -2,13 +2,8 @@
 \usepackage[margin=1.6cm,top=1.4cm,bottom=1.4cm]{geometry}
 \usepackage{amsmath,amssymb}
 \usepackage{graphicx}
-\usepackage{hyperref}
-\usepackage{microtype}
-\usepackage{parskip}
 \setlength{\parskip}{3pt}
 \usepackage[numbers,sort&compress]{natbib}
-\usepackage{titlesec}
-\titlespacing{\section}{0pt}{4pt}{2pt}
 
 \title{\vspace{-1.5em}\textbf{Q1: k-Means Clustering in High Dimensions}\\[2pt]
        \normalsize COL761 Assignment 2, 2026 \quad BITBLASTING}
@@ -25,6 +20,8 @@ For each $k \in \{1,\ldots,15\}$ we minimise the k-means objective (WCSS) via
 Lloyd's algorithm with 10 random restarts and record the inertia
 $I(k)=\sum_{j=1}^{k}\sum_{x_i\in C_j}\|x_i-\mu_j\|^2$.
 Features are $z$-normalised before fitting to prevent scale dominance.
+For API-mode experiments we use team member Arnav's kerberos/student id:
+\texttt{2023EE10968}.
 
 \textbf{Method.} The inertia curve is monotonically decreasing; the \emph{elbow}
 marks where marginal gain drops sharply.  We formalise this via the
@@ -39,14 +36,14 @@ $|\tilde{I}(k)|$ normalises the curvature relative to the current inertia
 magnitude, avoiding false positives in the steep, low-$k$ region.
 The selected $k$ is $\operatorname{argmax}_k r(k)$.
 
-The resulting elbow and the supplementary silhouette scores are shown in
-Figure~\ref{fig:plot}.  Both criteria agree on the selected value.
+The resulting elbow curves are shown in Figure~\ref{fig:plot}.
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=0.90\linewidth,height=4.5cm,keepaspectratio]{plot.png}
-  \caption{Left: WCSS vs.\ $k$ with the selected $k$ (red dashed line).
-           Right: Silhouette score vs.\ $k$ (supplementary).}
+  \caption{Subplots in a single \texttt{plot.png}: WCSS vs.\ $k$ for Dataset 1
+           (left) and Dataset 2 (right), each with selected $k$ marked by a red
+           dashed line.}
   \label{fig:plot}
 \end{figure}
 

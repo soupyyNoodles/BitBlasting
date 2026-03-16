@@ -1,0 +1,221 @@
+========================================================
+EVALUATING ON DATASET 1
+========================================================
+Running original strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/dataset_1.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/seedset_1.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_1.txt
+  k (budget)   : 50
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : unlimited
+=================================================================
+[OK] Exactly k=50 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 1  [101]
+  Valid edges in file: 50  (budget k=50)
+  Edges used for σ(R): 50
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 50 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =    36.2800
+  σ(R)           =     6.0000
+  |R| evaluated  = 50  (budget k=50)
+  Reduction      =  30.2800  (83.46%)
+  ρ(R)           = 0.834620
+  Hops           = unlimited
+=================================================================
+
+SUMMARY  sigma_empty=36.2800  sigma_R=6.0000  rho_R=0.834620  edges_evaluated=50  k=50  num_sim=50  hops=unlimited
+--------------------------------------------------------
+Running AdvancedGreedy strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/dataset_1.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/seedset_1.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_1_advanced.txt
+  k (budget)   : 50
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : unlimited
+=================================================================
+[OK] Exactly k=50 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 1  [101]
+  Valid edges in file: 50  (budget k=50)
+  Edges used for σ(R): 50
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 50 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =    36.2800
+  σ(R)           =     6.4200
+  |R| evaluated  = 50  (budget k=50)
+  Reduction      =  29.8600  (82.30%)
+  ρ(R)           = 0.823043
+  Hops           = unlimited
+=================================================================
+
+SUMMARY  sigma_empty=36.2800  sigma_R=6.4200  rho_R=0.823043  edges_evaluated=50  k=50  num_sim=50  hops=unlimited
+--------------------------------------------------------
+Running Edge-RIS strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/dataset_1.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset1/seedset_1.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_1_ris.txt
+  k (budget)   : 50
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : unlimited
+=================================================================
+[OK] Exactly k=50 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 1  [101]
+  Valid edges in file: 50  (budget k=50)
+  Edges used for σ(R): 50
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 50 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =    36.2800
+  σ(R)           =     5.9400
+  |R| evaluated  = 50  (budget k=50)
+  Reduction      =  30.3400  (83.63%)
+  ρ(R)           = 0.836273
+  Hops           = unlimited
+=================================================================
+
+SUMMARY  sigma_empty=36.2800  sigma_R=5.9400  rho_R=0.836273  edges_evaluated=50  k=50  num_sim=50  hops=unlimited
+
+========================================================
+EVALUATING ON DATASET 2
+========================================================
+Running original strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/dataset_2.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/seedset_2.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_2.txt
+  k (budget)   : 20
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : 3
+=================================================================
+[OK] Exactly k=20 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 10  [314, 5296, 6381, 7922, 8517, 12987, 13059, 13590, 13925, 14262]
+  Valid edges in file: 20  (budget k=20)
+  Edges used for σ(R): 20
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 20 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =   124.4200
+  σ(R)           =    14.8400
+  |R| evaluated  = 20  (budget k=20)
+  Reduction      = 109.5800  (88.07%)
+  ρ(R)           = 0.880727
+  Hops           = 3
+=================================================================
+
+SUMMARY  sigma_empty=124.4200  sigma_R=14.8400  rho_R=0.880727  edges_evaluated=20  k=20  num_sim=50  hops=3
+--------------------------------------------------------
+Running AdvancedGreedy strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/dataset_2.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/seedset_2.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_2_advanced.txt
+  k (budget)   : 20
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : 3
+=================================================================
+[OK] Exactly k=20 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 10  [314, 5296, 6381, 7922, 8517, 12987, 13059, 13590, 13925, 14262]
+  Valid edges in file: 20  (budget k=20)
+  Edges used for σ(R): 20
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 20 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =   124.4200
+  σ(R)           =    14.8400
+  |R| evaluated  = 20  (budget k=20)
+  Reduction      = 109.5800  (88.07%)
+  ρ(R)           = 0.880727
+  Hops           = 3
+=================================================================
+
+SUMMARY  sigma_empty=124.4200  sigma_R=14.8400  rho_R=0.880727  edges_evaluated=20  k=20  num_sim=50  hops=3
+--------------------------------------------------------
+Running Edge-RIS strategy...
+=================================================================
+  Forest Fire Spread Evaluator  —  COL761 A2 Q2
+=================================================================
+  Graph        : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/dataset_2.txt
+  Seed file    : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/dataset2/seedset_2.txt
+  Blocked file : /home/abhaas/Desktop/COURSES/COL761/BitBlasting/A2/q2/output_2_ris.txt
+  k (budget)   : 20
+  Simulations  : 50
+  Base seed    : 42
+  Hops         : 3
+=================================================================
+[OK] Exactly k=20 valid unique blocked edges loaded — full budget used.
+
+  Graph nodes        : 15233
+  Graph edges        : 62796
+  Seeds |A0|         : 10  [314, 5296, 6381, 7922, 8517, 12987, 13059, 13590, 13925, 14262]
+  Valid edges in file: 20  (budget k=20)
+  Edges used for σ(R): 20
+
+  Computing σ(∅)  (baseline, no edges blocked) ...
+  Computing σ(R)  (with 20 blocked edges) ...
+
+=================================================================
+  RESULTS
+=================================================================
+  σ(∅)           =   124.4200
+  σ(R)           =    15.3800
+  |R| evaluated  = 20  (budget k=20)
+  Reduction      = 109.0400  (87.64%)
+  ρ(R)           = 0.876386
+  Hops           = 3
+=================================================================
+
+SUMMARY  sigma_empty=124.4200  sigma_R=15.3800  rho_R=0.876386  edges_evaluated=20  k=20  num_sim=50  hops=3

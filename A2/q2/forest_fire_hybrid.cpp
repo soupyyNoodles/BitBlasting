@@ -15,7 +15,7 @@ using namespace std;
 #endif
 
 #ifndef HYBRID_USE_ADAPTIVE_BUDGET
-#define HYBRID_USE_ADAPTIVE_BUDGET 0
+#define HYBRID_USE_ADAPTIVE_BUDGET 1
 #endif
 
 #ifndef HYBRID_USE_FINE_RERANK

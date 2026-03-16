@@ -1,0 +1,225 @@
+\documentclass[9pt,a4paper]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\setlength{\parskip}{3pt}
+\setlength{\parindent}{0pt}
+
+\title{\textbf{Q2: Route Blocking for Reducing Forest Fire Spread}\\
+COL761 Assignment 2 (2026) -- BITBLASTING}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.2em}
+
+\textbf{Submitted files for Q2:} \texttt{A2/q2/forest\_fire.sh}, \texttt{A2/q2/report\_q2.pdf}.\\
+\textbf{Implementation used:} \texttt{A2/q2/forest\_fire.cpp} (single-process, single-threaded C++).
+
+\section*{Task 1: Optimization Formulation}
+We build on the assignment's definition of the directed probabilistic graph
+$G=(V,E,p)$, seed set $A_0$, and Independent-Cascade spreading process.
+As clarified on Piazza, Task 1 is formulated for the standard model
+(without hop constraint).
+
+For each edge $e\in E$, define binary decision variable:
+\[
+ x_e =
+ \begin{cases}
+ 1,&\text{if edge }e\text{ is blocked},\\
+ 0,&\text{otherwise.}
+ \end{cases}
+\]
+Let $R(x)=\{e\in E:x_e=1\}$. The optimization problem is:
+\[
+\min_{x\in\{0,1\}^{|E|}}\; \sigma(R(x))
+\quad\text{s.t.}\quad
+\sum_{e\in E} x_e = k.
+\]
+Here $\sigma(R)=\mathbb{E}[|A_\infty|]$ is the expected total burned nodes on
+$G_R=(V,E\setminus R,p)$.
+
+(Optional extension used in implementation) for hop-limit $h\ge 1$, spread is
+restricted to nodes with graph distance at most $h$ from $A_0$.
+
+\section*{Task 2: NP-Hardness}
+\textbf{Claim:} The route-blocking problem is NP-hard.
+
+\textbf{Reduction source:} \emph{Minimum $b$-Union} (also called Small-Set-Union)
+decision problem: given universe $U$, sets $\mathcal{S}=\{S_1,\dots,S_m\}$,
+integer $b$, and threshold $L$, decide whether there exists a subfamily of size
+$b$ whose union size is at most $L$. This problem is NP-hard.
+
+\textbf{Construction.}
+Given $(U,\mathcal{S},b,L)$, create a deterministic instance ($p=1$ for all edges):
+\begin{itemize}
+\item One seed node $s$.
+\item One set-node $a_i$ for each set $S_i$.
+\item One element-node $u_j$ for each element in $U$.
+\item For each $i$, add edge $(s,a_i)$.
+\item For each $u_j\in S_i$, add edge $(a_i,u_j)$.
+\item For each set-node $a_i$, add $M$ private leaf nodes
+      $p_{i,1},\dots,p_{i,M}$ with edges $(a_i,p_{i,r})$, where
+      $M>|U|+m$.
+\end{itemize}
+Set budget $k=m-b$.
+
+Because $M$ is very large, replacing any blocked non-source edge by blocking its
+corresponding source edge $(s,a_i)$ never increases spread and strictly improves
+(or preserves) objective. Hence an optimum can be taken to block only source
+edges. Blocking exactly $k=m-b$ source edges leaves exactly $b$ active set-nodes,
+call this family $\mathcal{C}$.
+
+Burned count is then deterministic and equals:
+\[
+|A_\infty| = 1 + b + bM + \left|\bigcup_{S_i\in\mathcal{C}} S_i\right|.
+\]
+Therefore, there exists a size-$b$ family with union size $\le L$ iff there
+exists a blocking set $R$ of size $k$ with
+\[
+\sigma(R) = |A_\infty| \le 1+b+bM+L.
+\]
+The reduction is polynomial, so route-blocking is NP-hard.
+
+\section*{Task 3: Structural Properties of $\sigma(R)$}
+\subsection*{3.1 Monotonicity}
+If $R_1\subseteq R_2$, then $E\setminus R_2\subseteq E\setminus R_1$.
+For every fixed live-edge realization, reachable burned nodes under $R_2$ are a
+subset of those under $R_1$. Taking expectation gives
+\[
+\sigma(R_2)\le \sigma(R_1).
+\]
+So $\sigma$ is monotone non-increasing in blocked-edge set size.
+
+\subsection*{3.2 Submodularity}
+For a fixed realization $\omega$, let $f_\omega(R)$ be burned-node count after
+removing $R$. For each node $v$, define indicator
+$\mathbf{1}_\omega(v\text{ reachable from }A_0\text{ in }E_\omega\setminus R)$;
+then $f_\omega(R)$ is the sum of these indicators.
+
+Reachability indicators under edge deletions are submodular in $R$ (equivalently,
+node-disconnection indicators are supermodular), hence $f_\omega$ is submodular.
+Expectation preserves submodularity, so
+\[
+\sigma(R)=\mathbb{E}_\omega[f_\omega(R)]
+\]
+is submodular.
+
+Thus for Task 3: $\sigma(R)$ is monotone non-increasing and submodular.
+
+\section*{Task 4: Algorithm Design}
+\subsection*{4.1 Final Algorithm}
+We use a scalable \textbf{two-stage hybrid Monte-Carlo greedy heuristic}:
+\begin{itemize}
+\item \textbf{Reachability filtering:} ignore currently unblocked edges whose
+tail is unreachable from seeds (or beyond hop limit).
+\item \textbf{Stage-1 coarse scoring:} run multiple IC simulations and assign
+credit backward from burned nodes to successful igniting edges.
+\item \textbf{Stage-2 fine reranking:} shortlist top-$L$ edges from Stage-1,
+sample common random worlds, and pick edge minimizing average spread.
+\item \textbf{Timeout safety:} write output after each selected edge and also
+at periodic checkpoints.
+\end{itemize}
+
+\subsection*{4.2 Pseudocode}
+\begin{verbatim}
+Input: G=(V,E,p), seeds S, budget k, n_random_instances r, hops h
+R <- empty
+write_output(R)
+
+for t = 1..k:
+    C <- unblocked and currently reachable candidate edges
+    if C empty: pick any remaining edge, add to R, write_output(R), continue
+
+    // Stage-1: coarse Monte-Carlo credit scoring
+    score[e] <- 0 for e in C
+    run T_c simulations of IC process on current graph:
+        log successful parent edges for each newly burned node
+        back-propagate node credit to igniting edges
+        accumulate score[e]
+
+    L <- top shortlist_size edges by score
+
+    // Stage-2: fine reranking using common sampled worlds
+    for each e in L: avgSpread[e] <- 0
+    run T_f sampled live-edge worlds:
+        for each e in L:
+            compute deterministic spread if e is additionally blocked
+            accumulate avgSpread[e]
+
+    choose e* = argmin avgSpread[e]
+    R <- R U {e*}
+    write_output(R)
+
+if |R| < k: fill remaining with arbitrary unblocked edges, writing each step
+return first k edges in R
+\end{verbatim}
+
+\subsection*{4.3 Complexity}
+Let $n=|V|$, $m=|E|$, budget $k$, coarse simulations/round $T_c$, fine worlds/round
+$T_f$, shortlist size $L$ (constant in implementation, max 24).
+
+Per round cost: $O(n+m)$ (filtering) $+\;O(T_c(n+m))$ (coarse MC)
+$+\;O(T_fL(n+m))$ (fine rerank).
+Total:
+\[
+O\Big(k(n+m)\big(1+T_c+T_fL\big)\Big).
+\]
+Memory is $O(n+m)$ with reusable buffers.
+
+\subsection*{4.4 Approximation Guarantee Discussion}
+Although $\sigma$ is submodular, our implemented solver is not exact global
+optimization of $\sigma$; it uses Monte-Carlo estimation, proxy scoring, and
+shortlisting. Therefore this implementation has \textbf{no formal constant-factor
+approximation guarantee}. Also, the standard $(1-1/e)$ theorem applies to
+maximization of monotone submodular objectives, not directly to this cardinality-
+constrained minimization setting.
+
+\section*{Task 5: Competitive Evaluation}
+\subsection*{5.1 Setup}
+Evaluation used the provided scripts:
+\texttt{A2/q2/Eval/evaluate.py} and \texttt{evaluate.sh}.
+
+Public settings:
+\begin{itemize}
+\item Dataset 1: $k=50$, \texttt{hops=-1}, \texttt{num\_sim=50}
+\item Dataset 2: $k=20$, \texttt{hops=3}, \texttt{num\_sim=50}
+\end{itemize}
+
+\subsection*{5.2 Results (official num\_sim=50)}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+Method & Dataset 1 $\rho(R)$ & Dataset 2 $\rho(R)$ \\
+\hline
+Original baseline (older \texttt{forest\_fire\_baseline.cpp}) & 0.814223 & 0.877672 \\
+Advanced & 0.823043 & 0.880727 \\
+RIS & 0.836273 & 0.876386 \\
+\textbf{Final submitted (current \texttt{forest\_fire.cpp})} & \textbf{0.834620} & \textbf{0.880727} \\
+\hline
+\end{tabular}
+\end{center}
+
+Final submitted output quality is balanced across both models and robust in
+runtime.
+
+\subsection*{5.3 Stability check (num\_sim=500)}
+\begin{center}
+\begin{tabular}{|l|c|c|}
+\hline
+Method & Dataset 1 $\rho(R)$ & Dataset 2 $\rho(R)$ \\
+\hline
+Original baseline & 0.746929 & 0.880560 \\
+Advanced & 0.779893 & 0.884162 \\
+RIS & 0.769905 & 0.880090 \\
+\textbf{Final submitted} & \textbf{0.795836} & \textbf{0.884162} \\
+\hline
+\end{tabular}
+\end{center}
+
+\subsection*{5.4 Timeout compliance}
+The solver periodically writes selected edges and also writes after each chosen
+edge. Hence, in case of timeout, partial output remains valid for partial
+credit.
+
+\end{document}
