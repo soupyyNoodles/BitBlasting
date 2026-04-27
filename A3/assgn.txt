@@ -1,0 +1,257 @@
+Here is the **full plain text** extracted from your PDF (nothing skipped):
+
+---
+
+Assignment 3
+COL761 - Data Mining
+
+Submission deadline: 24-04-2026
+Marks: 100
+Released: 13-04-2026
+
+Instructions
+
+Anti-Plagiarism Policy: Plag detection equals F-grade in the course.
+
+Use Python 3.10, Pytorch 2.7.1, Pytorch-geometric 2.7.0. Rest of the relevant packages can be found in requirements.txt shared with you. You must adhere to the specifications shared with you.
+
+Submission related instructions:
+Add to GitHub.
+Only one submission per group should be made. Any updated submission should be made by the same group member to avoid duplicates.
+Not following instructions will incur a penalty of 10%.
+More in the document.
+
+---
+
+### 1 Search in High Dimensional Space [30 marks]
+
+In modern healthcare systems, each patient in a large hospital database can be represented as a feature vector derived from electronic health records, including clinical measurements, diagnoses, and history. Separately, we are given a set of incoming query patients (e.g., new or recently observed cases) drawn from a similar population. Identifying which existing patients in the database are most “representative” of these queries is an important step in clinical decision support and cohort discovery.
+
+Given a database of patient representations (the base set) and a separate set of query patients, your task is to identify those database patients that best represent the query population. For each query patient, a fixed number k of its most similar database patients are retrieved. A database patient is considered more representative if it appears frequently across these retrieved sets over all queries. You must return a ranked list of the top-K most representative database patients under a strict time budget. Solutions will be evaluated against a hidden ground-truth ranking derived from this notion of representativeness.
+
+Dataset
+
+The provided data is organized as follows:
+• data.npy: database vectors to be indexed.
+• visible.npy: hidden evaluation queries used only for grading.
+• visible_GT.txt: ground-truth top-K representative patients for the given query set visible.npy.
+
+Download dataset from here (login with kerberos to download):
+[https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138781](https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138781)
+
+Task
+
+Given the database vectors and the query vectors, implement a method that returns a ranked list of the K most representative database items.
+
+Evaluation Script and the Output Format
+
+Here is the evaluation script (login with kerberos to download):
+[https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138724](https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138724)
+
+---
+
+Your evaluation environment will have these libraries installed:
+(a) numpy v1.26.3
+(b) faiss-cpu v1.13.2
+
+The zip file also contains a submission.py file, and your task is to implement your function in there. You may write other functions and call them, but the evaluation script called main.py uses the solve function inside submission.py.
+
+In your submission, only submit submission.py file. Your program must output:
+• a ranked list of K database indices, ordered from most to least representative;
+• each index must refer to a valid database vector;
+• duplicate indices are not allowed.
+
+---
+
+### Metric
+
+We evaluate the submitted ranking using nDCG@K.
+
+Ground-Truth Relevance
+
+Let ri denote the rank of item i in the hidden ground-truth ranking. The relevance score is defined as:
+
+rel(i) = (
+K − ri + 1, if ri ≤ K,
+0, otherwise.
+)
+
+---
+
+### DCG and nDCG
+
+For a submitted ranking (ans1, . . . , ansK), define:
+
+DCG@K =
+sum from j = 1 to K of
+rel(ansj) / log2(j + 1)
+
+Let IDCG@K be the DCG of the ideal ranking. Then:
+
+nDCG@K = DCG@K / IDCG@K
+
+---
+
+### Competitive Evaluation
+
+Submissions are evaluated under a fixed runtime budget. The solver must process the full query set and produce the final ranked list within the time limit. Performance is measured by the final nDCG@K on the hidden test queries. Then the competitive score will be computed from it similar to previous assignments.
+
+---
+
+### Implementation Interface
+
+Students must implement the following function in submission.py:
+
+def solve(base_vectors, query_vectors, k, K, time_budget):
+"""
+base_vectors: np.ndarray of shape (N, d)
+query_vectors: np.ndarray of shape (Q, d)
+k: int, fixed number of nearest neighbors per query
+K: int, number of output items to return
+time_budget: float, maximum allowed time in seconds (use as internal hint)
+Returns:
+np.ndarray of shape (K,), containing selected base indices
+"""
+
+---
+
+### Parameter Values
+
+For the two datasets provided, k = 100, and K = 100.
+Time limit is 70s for D1 and 20s for D2.
+
+Your code will be tested with hidden query sets of these datasets, and other hidden datasets as well.
+
+---
+
+### Breaking Ties
+
+If two vectors have the same representativeness, then the one with the lower index has lower rank (remember lower is better in ranking).
+
+---
+
+## 2 Prediction on Graph-Structured Data
+
+You are given four graph datasets - Graph A, Graph B, and Graph C covering two canonical graph prediction problems, node classification and link prediction. For each graph, we have shared the training and validation splits, but the test data is withheld.
+
+Table 1 summarises the tasks.
+
+Table 1. Assignment tasks.
+
+Graph | Problem type | Output | Metric | Train Time Limit (hrs) | Marks
+A | Node classification | 7 classes | Accuracy ↑ | 1 | 14
+B | Node classification | 2 classes | ROC-AUC ↑ | 2 | 28
+C | Link prediction | Edge existence | Hits@50 ↑ | 2 | 28
+
+Total: 70
+
+---
+
+### 2.1 Constraints and Guidelines
+
+1. You may use any GNN architecture of your choice.
+2. If you require, you may normalize, transform, or augment features while adhering to the python package requirements.
+
+---
+
+### 2.2 Data Loading
+
+Helper functions for loading the datasets have been provided. You can download the datasets using the following command:
+
+Load Dataset
+
+python load_dataset.py --dataset A|B|C --data_dir /absolute/path/to/datasets
+
+Example:
+
+python load_dataset.py --dataset A --data_dir /home/col761_a3/public_datasets
+
+• --data_dir: Path to the directory which contains all datasets in various sub-directories.
+
+---
+
+### 2.3 Evaluation
+
+You can first save the predictions on your val/test data using predict.py. Then compute the metrics over the saved results using evaluate.py.
+
+Commands:
+
+Predict
+
+python predict.py --dataset A|B|C --task node|link --data_dir /absolute/path/to/datasets --model_dir /path/to/models --output_dir /path/to/outputs --kerberos YOUR_KERBEROS
+
+Example (node):
+
+python predict.py --dataset A --task node --data_dir /home/col761_a3/public_datasets --model_path /home/col761_a3/models/ --output_dir /home/col761_a3/outputs --kerberos cs1234567
+
+Example (link):
+
+python predict.py --dataset C --task link --data_dir /home/col761_a3/public_datasets --model_path /home/col761_a3/models/ --output_dir /home/col761_a3/outputs --kerberos cs1234567
+
+• --model_dir: Directory containing your saved model. The script automatically resolves the model filename as <kerberos>*model*<dataset>.pt from this directory (e.g. cs1234567_model_A.pt).
+
+• --output_dir: Directory where the predictions file will be written.
+
+• --kerberos: Your Kerberos ID, used to name the output file (e.g. cs1234567_predictions_A.pt).
+
+---
+
+Evaluate
+
+python evaluate.py --dataset A|B|C --task node|link --data_dir /absolute/path/to/datasets --output_dir /path/to/outputs --kerberos YOUR_KERBEROS
+
+Example (node):
+
+python evaluate.py --dataset A --task node --data_dir /home/col761_a3/public_datasets --output_dir /home/col761_a3/outputs --kerberos cs1234567
+
+Example (link):
+
+python evaluate.py --dataset C --task link --data_dir /home/col761_a3/public_datasets --output_dir /home/col761_a3/outputs --kerberos cs1234567
+
+• --data_dir: Path to the shared datasets directory.
+• --output_dir: Directory containing your predictions file.
+• --kerberos: Your Kerberos ID.
+
+Note: The script looks for {kerberos}*predictions*{dataset}.pt here.
+
+The evaluation metric depends on dataset:
+Accuracy for A, AUC-ROC for B, Hits@50 for C.
+
+Important Link: The datasets, supporting scripts, and requirements.txt file can be found here.
+
+---
+
+### 2.4 Submission Instructions
+
+Directory structure:
+
+<kerberos>/
+Q1/
+submission.py
+Q2/
+src/
+load_dataset.py
+predict.py
+evaluate.py
+your code files
+requirements.txt
+
+---
+
+### 2.5 Grading
+
+All tasks are competitive.
+
+Let m denote your submission’s metric and m* the class-best metric.
+
+points = (m / m*) × max_marks
+
+---
+
+### Notes
+
+• Missing or error → score 0
+• Test data is hidden and used for final evaluation
+
+---
+

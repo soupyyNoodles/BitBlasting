@@ -1,0 +1,464 @@
+Assignment 3 released
+Updated 1 week ago by Samidha Verma and Mridul Gupta
+Dear all,
+Assignment 3 has been released on Moodle.
+This assignment is fully competitive. No reports. Only code. Since this is the final assignment, please ensure your code adheres to the prescribed input output interface.
+
+Please get started early
+Deadline: 24th April 23:59.
+
+Please post all queries related to this assignment in this thread. No other posts will be entertained.
+
+Update (A3 - Q2): We have received a few queries about the A3-Q2 submission format. Sharing details below:
+
+You have to submit all the code files in Q2/src, including the ones we have shared with you.
+Note: In predict.py, there are some components where you can change code if you need to pass some extra information to your trained model, other than the default ones. The script itself indicates where you can make code changes. Do not change the data loading and evaluation script.
+
+You should not submit trained models and data files. The evaluators will train the model using your code while adhering to the time limits given in the assignment. Finally, the trained models will be used for inference.
+
+You can have different architectures for different datasets/tasks. You can also code them up in separate python scripts. Finally, the compatibility with the downstream prediction and evaluation scripts is what matters.
+
+You may use ensembles as long as the total training time does not exceed the specified limit. Again, you may update the model calling inside the predict.py for that. Finally we will not change the predict command, so make sure you save the model as a single .pt file.
+
+Finally, please remove any temporary and pycache, etc., folders before submitting.
+
+Train command: python train.py --dataset A|B|C --task node|link --data_dir /absolute/path/to/datasets --model_dir /path/to/models --kerberos YOUR_KERBEROS
+
+--model_dir is the absolute path to the directory where your model will be saved. Make sure the model is saved with a name compatible with predict.py so that automated evaluation can take place. 
+0
+120 views
+61 Followup Discussions
+
+Resolved
+Anonymous Helix  2 weeks ago
+Is anyone able to locate this two files from task 1 of assignment - Download dataset from here (login with kerberos to download):
+https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138781
+Task
+Given the database vectors and the query vectors, implement a method that returns a ranked list of the K most
+representative database items.
+Evaluation Script and the Output Format
+Here is the evaluation script (login with kerberos to download):
+https://owncloud.iitd.ac.in/nextcloud/index.php/f/18138724
+0
+Mridul Gupta  2 weeks ago
+https://owncloud.iitd.ac.in/nextcloud/index.php/s/Gf4bjBRs7y42ZeY
+
+https://owncloud.iitd.ac.in/nextcloud/index.php/s/L3o5ZZDtx53JtJe
+
+Please check whether the above links work. If they work, please let me know, and mark the issue resolved.
+
+0
+Anonymous Helix  2 weeks ago
+Yes now it work
+0
+
+Resolved
+Anonymous Mouse  2 weeks ago
+The time limits specified in Q1 for the provided datasets 70s, 20s respectively, do not mention the hardware configuration. How should we standardize while evaluating our approaches?
+
+4
+Mridul Gupta  1 week ago
+We ran on Intel® Xeon® Gold 6248R CPU @ 3.00GHz with 96 CPUs and 512GB RAM.
+
+0
+Aniket Chattopadhyay  3 days ago
+Will our code be evaluated on this same environment ? If yes, how do we test our code on this environment ?
+0
+
+Resolved
+Anonymous Beaker  1 week ago
+Sir can you please give a guide or tell to how to use hpc and how to run on it by sechduling job and all, as some of us are new to hpc.
+0
+Mridul Gupta  6 days ago
+Please refer this: https://github.com/kanha95/HPC-IIT-Delhi
+
+0
+
+Resolved
+Anonymous Calc  1 week ago
+Hi TA, for Q1 my local runtime is around 36s on D2 and 45s on D1. Could you please confirm whether local runtime can vary depending on machine configuration, or whether we should expect the stated time limits to hold strictly on our own system as well? I am using a 16 GB RAM laptop.
+0
+Mridul Gupta  1 week ago
+It is expected to vary depending on local machine configuration. We ran on Intel® Xeon® Gold 6248R CPU @ 3.00GHz with 96 CPUs and 512GB RAM.
+
+0
+
+Resolved
+Anonymous Calc  1 week ago
+sir,I wanted to confirm one point about Q2 Part B.
+
+In the assignment, the guideline says: “You may use any GNN architecture of your choice.” For Part B, I currently have a feature-only model working well under the runtime budget, that is compatible with the provided train.py, predict.py, and evaluate.py flow and saves the model in the expected format.
+
+Could you please clarify whether, for Part B, we are strictly required to use a GNN-based architecture, or whether a non-GNN model is also acceptable as long as:
+
+it follows the required interface and file format,
+it respects the time budget, and
+it produces valid predictions for the provided evaluation pipeline?
+
+I want to make sure my submission matches the intended requirement before finalizing it. If a true GNN is mandatory, I will switch to one.
+
+Thank you.
+0
+Samidha Verma  6 days ago
+The architecture has to be a GNN.
+0
+
+Resolved
+Anonymous Comp  1 week ago
+Some more questions sir
+1) Is GPU allowed?
+2)Can we change requirements.txt file?
+0
+Mridul Gupta  1 week ago
+GPU is allowed.
+Post what you want to add to it. We will make the changes and add to the runtime environment. We need this for seamless automated evaluation.
+0
+Anonymous Mouse 3  1 day ago
+pyg_lib
+torch_scatter
+torch_sparse
+torch_cluster
+
+can we use these?
+0
+Mridul Gupta  1 day ago
+These libraries introduce breaking changes across versions. If possible, avoid their usage. If necessary, you may use the libraries, but mention the specific version you used in a README.
+
+0
+
+Resolved
+Anonymous Gear  1 week ago
+What GPU are you going to use to run the code?
+0
+Mridul Gupta  1 week ago
+A100 40GB
+
+0
+
+Resolved
+Anonymous Scale  7 days ago
+I was able to establish internet connection on HPC only for python3.11 version, however some of the requirement versions are available only till python3.10 version, so can i change the version of these libraries to make them supportive for python3.11 and then use accordingly? or can you suggest steps to follow so that i am able to connect to internet for python3.10?
+0
+Mridul Gupta  6 days ago
+This sounds unbelievable that you would be able to establish internet connection for only one version of python. I think this is a resolvable issue and therefore I suggest you try to resolve this issue and work with python 3.10
+
+1
+
+Resolved
+Anonymous Poet  6 days ago
+For Q1, it is mentioned that our code will be tested on hidden query sets and possibly other hidden datasets.
+
+Could you please clarify the expected range of the following:
+
+Number of base vectors (N)
+
+Number of query vectors (Q)
+
+Dimensionality (d)
+
+Values of (k) and (K)
+
+To ensure our solution generalizes well within the time limits.
+
+2
+Mridul Gupta  3 days ago
+You can assume the dataset statistics to be the same. In any case, if there are more queries, the time limit will also be increased.
+
+0
+
+Resolved
+Anonymous Atom  6 days ago
+Hi,
+
+I was able to download the Q1 datasets (D1, D2) and evaluation scripts successfully. However, I am unable to locate the supporting scripts required for Q2, namely:
+
+load_dataset.py
+predict.py
+evaluate.py
+
+The assignment mentions that these are part of the “supporting scripts” available in the provided link, but I could not find them in the downloaded folders.
+
+Could you please clarify:
+
+Where exactly these files are located (which folder or zip)?
+Whether there is a separate link for Q2 starter code?
+
+Thanks!
+1
+
+Unresolved
+Anonymous Helix 2  4 days ago
+While doing job submission on hpc , what do we have to keep as project (flag -P) ?
+0
+Rittik Dey  2 days ago
+I guess the project flag is -p col761.course but can you please verify it with your peers?
+0
+
+Unresolved
+Anonymous Mouse 2  4 days ago
+Can anyone help with how to connect to internet through HPC, or how to install required libraries of Q2?
+0
+Mridul Gupta  3 days ago
+Does this help with internet connection?
+
+[1] https://github.com/kanha95/HPC-IIT-Delhi
+
+0
+Anonymous Mouse 2  2 days ago
+Facing old GLIBC version issue on assigned node for GPU
+0
+
+Unresolved
+Anonymous Beaker 2  4 days ago
+Is anyone able to complete the Q1 in the specified time limits? my dataset 2 is exeeding the time limit. (and even one if I try to improve the score). If so, on what system are you running?
+0
+
+Unresolved
+Anonymous Calc 2  4 days ago
+Our assignment requires PyTorch 2.7.1 which needs GLIBC ≥ 2.28. The nodes I'm being allocated (khas016, khas019) only have GLIBC 2.17. Could you please allocate me a node with GLIBC ≥ 2.28, or advise which queue/node type to request?
+0
+Anonymous Gear 2  2 days ago
+Yes same issue
+0
+
+Resolved
+Anonymous Comp 2  3 days ago
+Can I change the requirements.txt because in some of the packages mentioned the version is mismatched with the python=3.10. I am attaching the error here also:
+ERROR: Ignored the following versions that require a different python version: 1.16.0 Requires-Python >=3.11; 1.16.0rc1 Requires-Python >=3.11; 1.16.0rc2 Requires-Python >=3.11; 1.16.1 Requires-Python >=3.11; 1.16.2 Requires-Python >=3.11; 1.16.3 Requires-Python >=3.11; 1.17.0 Requires-Python >=3.11; 1.17.0rc1 Requires-Python >=3.11; 1.17.0rc2 Requires-Python >=3.11; 1.17.1 Requires-Python >=3.11; 1.3.3 Requires-Python >=3.11; 1.6.2 Requires-Python >=3.7,<3.10; 1.6.3 Requires-Python >=3.7,<3.10; 1.7.0 Requires-Python >=3.7,<3.10; 1.7.1 Requires-Python >=3.7,<3.10; 1.8.0 Requires-Python >=3.11; 1.8.0rc1 Requires-Python >=3.11; 2.3.0 Requires-Python >=3.11; 2.3.1 Requires-Python >=3.11; 2.3.2 Requires-Python >=3.11; 2.3.3 Requires-Python >=3.11; 2.3.4 Requires-Python >=3.11; 2.3.5 Requires-Python >=3.11; 2.4.0 Requires-Python >=3.11; 2.4.0rc1 Requires-Python >=3.11; 2.4.1 Requires-Python >=3.11; 2.4.2 Requires-Python >=3.11; 2.4.3 Requires-Python >=3.11; 2.4.4 Requires-Python >=3.11; 3.0.0 Requires-Python >=3.11; 3.0.0rc0 Requires-Python >=3.11; 3.0.0rc1 Requires-Python >=3.11; 3.0.0rc2 Requires-Python >=3.11; 3.0.1 Requires-Python >=3.11; 3.0.2 Requires-Python >=3.11; 3.5 Requires-Python >=3.11; 3.5rc0 Requires-Python >=3.11; 3.6 Requires-Python >=3.11; 3.6.1 Requires-Python >=3.11,!=3.14.1; 3.6rc0 Requires-Python >=3.11ERROR: Could not find a version that satisfies the requirement torch==2.7.1+cu118 (from versions: 1.11.0, 1.12.0, 1.12.1, 1.13.0, 1.13.1, 2.0.0, 2.0.1, 2.1.0, 2.1.1, 2.1.2, 2.2.0, 2.2.1, 2.2.2, 2.3.0, 2.3.1, 2.4.0, 2.4.1, 2.5.0, 2.5.1, 2.6.0)ERROR: No matching distribution found for torch==2.7.1+cu118
+Can I install pyg-lib ?
+0
+Mridul Gupta  3 days ago
+The error is incomplete, the package versions are present but their names are not. Install torch 2.7.1 with whatever cuda/cpu version that allows it to install. This should help.
+pyg-lib has caused dependency issues in our experience. Please avoid if possible. If absolutely necessary, you may install pyg-lib, but then mention the version in a README.md file.
+0
+Anonymous Comp 2  3 days ago
+The error is for torch 2.7.1. As you can see in the error log that the distribution is not available.
+ Then can we install torch_scatter and torch_sparse which is needed for torch_geometric.loader
+0
+Anonymous Poet 2  3 days ago
+drop the "+cu118". 2.7.1 exists. cuXXX is your cuda version. you can install without it.
+1
+Endorsed by Instructor (Mridul Gupta)
+Anonymous Comp 2  2 days ago
+I want to use cuda since GPU is allowed.
+0
+Anonymous Helix 3  1 day ago
+without +cu118 also following error is coming 
+
+
+ERROR: Ignored the following versions that require a different python version: 1.16.0 Requires-Python >=3.11; 1.16.0rc1 Requires-Python >=3.11; 1.16.0rc2 Requires-Python >=3.11; 1.16.1 Requires-Python >=3.11; 1.16.2 Requires-Python >=3.11; 1.16.3 Requires-Python >=3.11; 1.17.0 Requires-Python >=3.11; 1.17.0rc1 Requires-Python >=3.11; 1.17.0rc2 Requires-Python >=3.11; 1.17.1 Requires-Python >=3.11; 1.3.3 Requires-Python >=3.11; 1.6.2 Requires-Python >=3.7,<3.10; 1.6.3 Requires-Python >=3.7,<3.10; 1.7.0 Requires-Python >=3.7,<3.10; 1.7.1 Requires-Python >=3.7,<3.10; 1.8.0 Requires-Python >=3.11; 1.8.0rc1 Requires-Python >=3.11; 3.0.0 Requires-Python >=3.11; 3.0.0rc0 Requires-Python >=3.11; 3.0.0rc1 Requires-Python >=3.11; 3.0.0rc2 Requires-Python >=3.11; 3.0.1 Requires-Python >=3.11; 3.0.2 Requires-Python >=3.11; 3.11.0rc1 Requires-Python >=3.11
+ERROR: Could not find a version that satisfies the requirement torch==2.7.1 (from versions: 1.11.0, 1.12.0, 1.12.1, 1.13.0, 1.13.1, 2.0.0, 2.0.1, 2.1.0, 2.1.1, 2.1.2, 2.2.0, 2.2.1, 2.2.2, 2.3.0, 2.3.1, 2.4.0, 2.4.1, 2.5.0, 2.5.1, 2.6.0)
+ERROR: No matching distribution found for torch==2.7.1
+
+if someone able to do this on their hpc pls help us 
+
+0
+
+Unresolved
+Anonymous Gear 2  3 days ago
+I followed this:
+
+conda create -n col761 python=3.10 -y
+conda activate col761
+# Install PyTorch
+pip install torch==2.7.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+# Install remaining deps
+pip install torch-geometric==2.7.0 scikit-learn tqdm numpy==2.2.6 scipy
+
+I ran this on login node and then requested using qsub -I -P col761.course -l select=1:ncpus=4:ngpus=1:mem=16G -l wall
+time=1:30:00
+But when i imported torch here i got 
+python: /lib64/libc.so.6: version `GLIBC_2.28' not found (required by python) python: /lib64/libc.so.6: version `GLIBC_2.25' not found (required by python) python: /lib64/libc.so.6: version `GLIBC_2.26' not found (required by python) python: /lib64/libc.so.6: version `GLIBC_2.27' not found (required by python)
+
+1
+Anonymous Scale 2  3 days ago
+check if you are activating the conda env once you get the job, also try 'which python' command to see if the path points to correct destination for your env
+0
+Anonymous Poet 2  3 days ago
+I think the GLIBC version in your node is older than what the version of torch requires. try comparing the version of your node vs what torch requires.
+0
+
+Unresolved
+Anonymous Atom 2  2 days ago
+Is there a minimum number of threads our program will be run with, as dynamics change significantly for just 1 or 2 threads?
+0
+
+Unresolved
+Anonymous Gear 2  2 days ago
+Pls tell how are you installing python librarieries torch etc. on khaas nodes on hpc:
+I am currently using this command qsub -I -P col761.course -l select=1:ncpus=8:ngpus=1:mem=64G -l walltime=2:30:00 
+But facing old glibc issues for torch 2.7.1 as it assigns a khaas node which has older glibc
+1
+Anonymous Comp 2  2 days ago
+I think you need to create a conda environment in side the khaas node and then the issue will be resolved. Install your packages then.
+0
+Anonymous Gear 2  2 days ago
+But on khaas node my proxy login script stays stuck here :
+(base) [cs5221667@khas004 ~]
+$ ./proxy.sh
+proxy login 
+
+0
+
+Unresolved
+Anonymous Helix 3  2 days ago
+```
+
+ERROR: Ignored the following versions that require a different python version: 1.16.0 Requires-Python >=3.11; 1.16.0rc1 Requires-Python >=3.11; 1.16.0rc2 Requires-Python >=3.11; 1.16.1 Requires-Python >=3.11; 1.16.2 Requires-Python >=3.11; 1.16.3 Requires-Python >=3.11; 1.17.0 Requires-Python >=3.11; 1.17.0rc1 Requires-Python >=3.11; 1.17.0rc2 Requires-Python >=3.11; 1.17.1 Requires-Python >=3.11; 1.3.3 Requires-Python >=3.11; 1.6.2 Requires-Python >=3.7,<3.10; 1.6.3 Requires-Python >=3.7,<3.10; 1.7.0 Requires-Python >=3.7,<3.10; 1.7.1 Requires-Python >=3.7,<3.10; 1.8.0 Requires-Python >=3.11; 1.8.0rc1 Requires-Python >=3.11; 2.3.0 Requires-Python >=3.11; 2.3.1 Requires-Python >=3.11; 2.3.2 Requires-Python >=3.11; 2.3.3 Requires-Python >=3.11; 2.3.4 Requires-Python >=3.11; 2.3.5 Requires-Python >=3.11; 2.4.0 Requires-Python >=3.11; 2.4.0rc1 Requires-Python >=3.11; 2.4.1 Requires-Python >=3.11; 2.4.2 Requires-Python >=3.11; 2.4.3 Requires-Python >=3.11; 2.4.4 Requires-Python >=3.11; 3.0.0 Requires-Python >=3.11; 3.0.0rc0 Requires-Python >=3.11; 3.0.0rc1 Requires-Python >=3.11; 3.0.0rc2 Requires-Python >=3.11; 3.0.1 Requires-Python >=3.11; 3.0.2 Requires-Python >=3.11; 3.11.0rc1 Requires-Python >=3.11; 3.5 Requires-Python >=3.11; 3.5rc0 Requires-Python >=3.11; 3.6 Requires-Python >=3.11; 3.6.1 Requires-Python >=3.11,!=3.14.1; 3.6rc0 Requires-Python >=3.11
+ERROR: Could not find a version that satisfies the requirement torch==2.7.1+cu118 (from versions: 1.11.0, 1.12.0, 1.12.1, 1.13.0, 1.13.1, 2.0.0, 2.0.1, 2.1.0, 2.1.1, 2.1.2, 2.2.0, 2.2.1, 2.2.2, 2.3.0, 2.3.1, 2.4.0, 2.4.1, 2.5.0, 2.5.1, 2.6.0)
+ERROR: No matching distribution found for torch==2.7.1+cu118
+```
+I am getting this error so should I switch to python 3.11 or update the version for 3.10 
+
+0
+
+Unresolved
+Anonymous Mouse 2  2 days ago
+People who ran their code for Q2 in hpc successfully, can you please tell what cmds you guys used ?
+2
+Sanjay P Lal  1 day ago
+qsub pbsbatch.sh
+
+# ── Paths ────────────────────────────────────────────────────────
+
+DATA_DIR="/home/cse/dual/cs5170418/scratch/scol/COL761_A3/public_datasets"
+
+MODEL_DIR="/home/cse/dual/cs5170418/scratch/scol/COL761_A3/models"
+
+OUTPUT_DIR="/home/cse/dual/cs5170418/scratch/scol/COL761_A3/outputs"
+
+KERBEROS="cs5170418"
+
+mkdir -p "$MODEL_DIR" "$OUTPUT_DIR"
+
+# ================================================================
+
+# DATASET C  —  link prediction  —  Hits@50
+
+# ================================================================
+
+echo ""
+
+echo "=========================================="
+
+echo " [C] TRAIN started : $(date)"
+
+echo "=========================================="
+
+python train.py \
+
+    --dataset   C \
+
+    --task      link \
+
+    --data_dir  "$DATA_DIR" \
+
+    --model_dir "$MODEL_DIR" \
+
+    --kerberos  "$KERBEROS"
+
+if [ ! -f "$MODEL_DIR/${KERBEROS}_model_C.pt" ]; then
+
+    echo "[C] ERROR: model not saved — aborting"
+
+    exit 1
+
+fi
+
+echo "[C] TRAIN done : $(date)"
+
+echo ""
+
+echo "=========================================="
+
+echo " [C] PREDICT started : $(date)"
+
+echo "=========================================="
+
+python predict.py \
+
+    --dataset    C \
+
+    --task       link \
+
+    --data_dir   "$DATA_DIR" \
+
+    --model_dir  "$MODEL_DIR" \
+
+    --output_dir "$OUTPUT_DIR" \
+
+    --kerberos   "$KERBEROS"
+
+echo "[C] PREDICT done : $(date)"
+
+echo ""
+
+echo "=========================================="
+
+echo " [C] EVALUATE"
+
+echo "=========================================="
+
+python evaluate.py \
+
+    --dataset    C \
+
+    --task       link \
+
+    --data_dir   "$DATA_DIR" \
+
+    --output_dir "$OUTPUT_DIR" \
+
+    --kerberos   "$KERBEROS"
+
+0
+Anonymous Gear 2  1 day ago
+Pls first tell you are running on khaas node? And also how are you i stalling libraries like torch on it as we need 2.7.1 with python3.10 which requires glibc greater than 2.28
+0
+Sanjay P Lal  20 hours ago
+i am creating an python enviornment  and when you run  sh script it opens the neviornment which has pre installed libraries in enviornment and for setting up enviornment and  installing you dont need any specific with gpu you can install on cpu node also and test it and i installed with python install -r requirements.txt while connecting it to proxy and for proxy you can open terminal and ssh hpc and then ask for a computing node by qsub with minimal specification for some time and than use the github link provided to setup proxy and than open another terminal and ssh khas*** or chas*** node where you have got access  to gain access on the same computing node where proxy is runing and try to create enviornment in my case i was not using conda i was just using python 
+
+python -m venv col761_env or 
+/home/soft/PYTHON/3.9.13/ucs4/gnu/447/bin/python3 -m venv col761_env if you want to use specific version of python install it from available modules
+0
+Anonymous Comp 3  2 hours ago
+Have you tried running on khaas node?
+0
+
+Resolved
+Anonymous Beaker 2  23 hours ago
+For Q1, do I need to submit requirements.txt file also? or just submission.py?
+0
+Rittik Dey  20 hours ago
+Both are required.
+0
+Anonymous Beaker 3  18 hours ago
+The folder structure in the assignment mentioned that for Q1, we only need to submit submission.py  and for Q2, we need to add a requirements.txt right? In case we have already submitted, do we need to add a requirements.txt file and resubmit?
+1
+Anonymous Beaker 3  14 hours ago
+Can you kindly clarify, as we have already submitted and we would need to submit latest by today considering exhaustion of buffer days.
+0
+Mridul Gupta  13 hours ago
+no need.
+
+just to help us foresee any possible issues: (1) do you use any exotic library out of standard? (2) does Q2’s requirements.txt already contain those libraries?
+
+0
+Anonymous Beaker 3  7 hours ago
+No exotic libraries — only numpy and faiss-cpu, both already specified in the assignment's standard requirements.txt for Q1.
+0
+
+
+
+PyTorch GLIBC version issues
+Updated 1 day ago by Mridul Gupta
+Hi all,
+Several of you have been facing old GLIBC version issues. The PyTorch release document (link) clearly mentions that the wheels have been compiled to be manylinux2014 compatible which only requires GLIBC 2.17 or above.
+
+
+Therefore, I implore you to do the following to resolve this issue:
+
+Ensure that you are not using nightly builds. This can be done by ensuring you use the stable wheel index url from PyTorch installation commands here.
+Ensure that you are installing via pip as PyTorch recommends.
+Try to use PyTorch 2.5.0+cu118 (or whatever cuda version you need) which is an older version and therefore may be compatible with older GLIBC versions. If the issue still persists, fall back to PyTorch 2.2.0, then fall back to 1.13.
+Whichever version you end up using, mention that in a README.md file.
