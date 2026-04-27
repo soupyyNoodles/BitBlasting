@@ -3,6 +3,8 @@ import os
 import pandas as pd
 import rustworkx as rx
 import pickle
+import scipy.stats
+from collections import Counter
 from gspan_mining import gSpan
 
 # Patch gspan if needed (for pandas compatibility)
@@ -98,6 +100,34 @@ def main():
     
     print(f"Reading graphs from {input_path}...")
     graphs = parse_graphs(input_path)
+    
+    db_v_dists = {}
+    db_e_dists = {}
+    for g in graphs:
+        v_c = Counter()
+        e_c = Counter()
+        nodes = {}
+        for line in g:
+            parts = line.split()
+            if parts[0] == 'v':
+                lbl = parts[2]
+                v_c[lbl] += 1
+                nodes[parts[1]] = lbl
+            elif parts[0] == 'e':
+                u_lbl = nodes[parts[1]]
+                v_lbl = nodes[parts[2]]
+                e_lbl = parts[3]
+                edge_tup = tuple(sorted([u_lbl, v_lbl])) + (e_lbl,)
+                e_c[edge_tup] += 1
+        for lbl, count in v_c.items():
+            db_v_dists.setdefault(lbl, []).append(count)
+        for lbl, count in e_c.items():
+            db_e_dists.setdefault(lbl, []).append(count)
+            
+    def prob_feature_ge(dist_list, k, total_graphs):
+        if not dist_list: return 0.0
+        return sum(1 for x in dist_list if x >= k) / total_graphs
+    
     temp_gspan_file = "temp_gspan_input_gindex.data"
     write_gspan_format(graphs, temp_gspan_file)
     
@@ -170,6 +200,7 @@ def main():
             
             for cand in candidates:
                 g = cand['rx']
+                p_gspan = cand['gspan']
                 sup = cand['support']
                 
                 is_disc = 1
@@ -188,7 +219,28 @@ def main():
                 
                 if is_disc:
                     if size > 1:
-                        score = abs(sup - len(graphs) * 0.5) / len(graphs)
+                        v_c = Counter()
+                        e_c = Counter()
+                        for idx in g.node_indices():
+                            v_c[g.get_node_data(idx)['label']] += 1
+                        for u, v, e_data in g.weighted_edge_list():
+                            u_lbl = g.get_node_data(u)['label']
+                            v_lbl2 = g.get_node_data(v)['label']
+                            e_lbl = e_data['label']
+                            edge_tup = tuple(sorted([u_lbl, v_lbl2])) + (e_lbl,)
+                            e_c[edge_tup] += 1
+                        
+                        P_g = 1.0
+                        total_graphs = len(graphs)
+                        for lbl, count in v_c.items():
+                            P_g *= prob_feature_ge(db_v_dists.get(lbl, []), count, total_graphs)
+                        for lbl, count in e_c.items():
+                            P_g *= prob_feature_ge(db_e_dists.get(lbl, []), count, total_graphs)
+                            
+                        if P_g > 0:
+                            score = scipy.stats.binom.sf(sup - 1, total_graphs, P_g)
+                        else:
+                            score = 0.0
                         selected.append((g, score))
         return selected
 

@@ -166,14 +166,14 @@ def main() -> None:
         data.x = maybe_sgc_features(data.x, data.edge_index, steps=args.sgc_steps, alpha=args.sgc_alpha)
 
     train_nodes = data.labeled_nodes[data.train_mask]
-    train_labels = data.y[data.train_mask]
+    train_labels = data.y[data.train_mask].long()
     val_nodes = data.labeled_nodes[data.val_mask]
-    val_labels = data.y[data.val_mask]
+    val_labels = data.y[data.val_mask].long()
 
     full_train_mask = torch.zeros(data.num_nodes, dtype=torch.bool)
     full_train_mask[train_nodes] = True
     full_train_labels = torch.zeros(data.num_nodes, dtype=torch.long)
-    full_train_labels[train_nodes] = train_labels
+    full_train_labels[train_nodes] = train_labels.long()
 
     results = []
     for model_type in [name.strip() for name in args.models.split(",") if name.strip()]:

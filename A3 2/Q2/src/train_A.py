@@ -15,7 +15,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--data_dir", required=True)
     parser.add_argument("--out_dir", required=True)
     parser.add_argument("--kerberos", required=True)
-    parser.add_argument("--models", default="gcn,appnp,pmlp,mlp,sage,gatv2,gcnii")
+    parser.add_argument("--models", default="gatv2")
     parser.add_argument("--hidden_channels", type=int, default=256)
     parser.add_argument("--dropout", type=float, default=0.5)
     parser.add_argument("--epochs", type=int, default=400)
@@ -130,12 +130,9 @@ def main() -> None:
                 args=args,
             )
             run_name = f"{model_type}_seed{seed}"
-            results.append({"name": run_name, "score": val_acc, "model": trained_model})
 
-            if args.no_cs:
-                continue
             cs_model = CorrectSmoothNodeClassifier(
-                base_model=copy.deepcopy(trained_model),
+                base_model=trained_model,
                 train_mask_full=full_train_mask,
                 train_labels_full=full_train_labels,
             )
@@ -163,8 +160,13 @@ def main() -> None:
             "all_results": {entry["name"]: entry["score"] for entry in results},
         },
     )
+    print("\n--- Accuracy Comparison ---")
+    for entry in results:
+        print(f"Model: {entry['name']:<20} | Val Acc: {entry['score']:.4f}")
+    print("---------------------------\n")
+
     print(f"Saved best A model to {out_path}")
-    print(f"Validation accuracy: {best_entry['score']:.4f}")
+    print(f"Best Validation accuracy: {best_entry['score']:.4f}")
 
 
 if __name__ == "__main__":

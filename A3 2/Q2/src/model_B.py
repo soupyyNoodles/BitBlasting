@@ -156,9 +156,10 @@ class CorrectSmoothBinaryClassifier(nn.Module):
         probs = to_probability(logits)
         train_mask = self.train_mask_full.to(probs.device)
         train_labels = self.train_labels_full.to(probs.device)
+        train_labels_masked = train_labels[train_mask]
         cas = self._get_cas()
-        corrected = cas.correct(probs, train_labels, train_mask, edge_index)
-        smoothed = cas.smooth(corrected, train_labels, train_mask, edge_index)
+        corrected = cas.correct(probs, train_labels_masked, train_mask, edge_index)
+        smoothed = cas.smooth(corrected, train_labels_masked, train_mask, edge_index)
         return probs_to_logits(smoothed)
 
 
