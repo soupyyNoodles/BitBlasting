@@ -25,16 +25,11 @@ Q2/
 ├── requirements.txt
 └── src/
     ├── load_dataset.py       (official, unchanged)
-    ├── predict.py            (official, unchanged)
+    ├── predict.py            (official, unchanged - normalization added natively in train)
     ├── evaluate.py           (official, unchanged)
-    ├── train.py              (unified entry point — see Piazza train command)
-    ├── train_A.py            (per-dataset training logic, called by train.py)
-    ├── train_B.py
-    ├── train_C.py
-    ├── model_A.py
-    ├── model_B.py
-    ├── model_C.py
-    └── utils.py
+    ├── train.py              (unified entry point handling training execution paths)
+    ├── models.py             (unified model initializers and architectures for A/B/C)
+    └── utils.py              (mathematical metrics and graph operations)
 ```
 
 ### Train / predict / evaluate commands

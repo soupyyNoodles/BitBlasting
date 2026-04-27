@@ -1,9 +1,111 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn.models import CorrectAndSmooth
-
+from utils import build_sym_norm_adj, probs_to_logits
 from utils import build_sym_norm_adj, probs_to_logits, to_probability
+
+
+
+class GATv2NodeClassifier(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int,
+        heads: int = 8,
+        dropout: float = 0.6,
+    ):
+        super().__init__()
+        head_channels = max(8, hidden_channels // heads)
+        self.conv1 = GATv2Conv(
+            in_channels,
+            head_channels,
+            heads=heads,
+            concat=True,
+            dropout=dropout,
+        )
+        self.conv2 = GATv2Conv(
+            head_channels * heads,
+            out_channels,
+            heads=1,
+            concat=False,
+            dropout=dropout,
+        )
+        self.dropout = dropout
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        x = F.elu(self.conv1(x, edge_index))
+        x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.conv2(x, edge_index)
+
+
+class CorrectSmoothNodeClassifier(nn.Module):
+    def __init__(
+        self,
+        base_model: nn.Module,
+        train_mask_full: torch.Tensor,
+        train_labels_full: torch.Tensor,
+        num_correction_layers: int = 50,
+        correction_alpha: float = 0.5,
+        num_smoothing_layers: int = 50,
+        smoothing_alpha: float = 0.8,
+        autoscale: bool = False,
+        scale: float = 1.0,
+    ):
+        super().__init__()
+        self.base_model = base_model
+        self.register_buffer("train_mask_full", train_mask_full.bool())
+        self.register_buffer("train_labels_full", train_labels_full.long())
+        self.num_correction_layers = num_correction_layers
+        self.correction_alpha = correction_alpha
+        self.num_smoothing_layers = num_smoothing_layers
+        self.smoothing_alpha = smoothing_alpha
+        self.autoscale = autoscale
+        self.scale = scale
+        self._cas: CorrectAndSmooth | None = None
+
+    def _get_cas(self) -> CorrectAndSmooth:
+        if self._cas is None:
+            self._cas = CorrectAndSmooth(
+                num_correction_layers=self.num_correction_layers,
+                correction_alpha=self.correction_alpha,
+                num_smoothing_layers=self.num_smoothing_layers,
+                smoothing_alpha=self.smoothing_alpha,
+                autoscale=self.autoscale,
+                scale=self.scale,
+            )
+        return self._cas
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        logits = self.base_model(x, edge_index)
+        if self.training:
+            return logits
+
+        cas = self._get_cas()
+        probs = torch.softmax(logits, dim=-1)
+        train_mask = self.train_mask_full.to(probs.device)
+        train_labels = self.train_labels_full.to(probs.device)
+        train_labels_masked = train_labels[train_mask]
+        corrected = cas.correct(probs, train_labels_masked, train_mask, edge_index)
+        smoothed = cas.smooth(corrected, train_labels_masked, train_mask, edge_index)
+        return probs_to_logits(smoothed)
+
+
+def build_model_a(
+    model_type: str,
+    in_channels: int,
+    hidden_channels: int,
+    out_channels: int,
+    dropout: float,
+) -> nn.Module:
+    if model_type in ("gat", "gatv2"):
+        return GATv2NodeClassifier(in_channels, hidden_channels, out_channels, dropout=dropout)
+    raise ValueError(f"Unknown A model type: {model_type}")
+
+
 
 
 class BinaryLinearClassifier(nn.Module):
@@ -178,6 +280,31 @@ def _chunked_logits(fn, x: torch.Tensor, device: torch.device, chunk_size: int) 
     return result
 
 
+class GraphSAGENodeClassifier(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int,
+        out_channels: int = 2,
+        num_layers: int = 3,
+        dropout: float = 0.5,
+    ):
+        super().__init__()
+        from torch_geometric.nn import SAGEConv
+        self.convs = nn.ModuleList()
+        self.convs.append(SAGEConv(in_channels, hidden_channels))
+        for _ in range(max(0, num_layers - 2)):
+            self.convs.append(SAGEConv(hidden_channels, hidden_channels))
+        self.convs.append(SAGEConv(hidden_channels, out_channels))
+        self.dropout = dropout
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        for conv in self.convs[:-1]:
+            x = conv(x, edge_index)
+            x = F.relu(x)
+            x = F.dropout(x, p=self.dropout, training=self.training)
+        return self.convs[-1](x, edge_index)
+
 def build_model_b(
     model_type: str,
     in_channels: int,
@@ -207,4 +334,61 @@ def build_model_b(
             inference_chunk_size=inference_chunk_size,
             norm_type=norm_type,
         )
+    if model_type == "graphsage":
+        return GraphSAGENodeClassifier(
+            in_channels=in_channels,
+            hidden_channels=hidden_channels,
+            out_channels=2,
+            num_layers=num_layers,
+            dropout=dropout,
+        )
     raise ValueError(f"Unknown B model type: {model_type}")
+
+class PairwiseMLPLinkPredictor(nn.Module):
+    def __init__(
+        self,
+        in_channels: int,
+        hidden_channels: int = 256,
+        dropout: float = 0.2,
+        pair_chunk_size: int = 4096,
+        num_layers: int = 3,
+    ):
+        super().__init__()
+        self.pair_chunk_size = pair_chunk_size
+
+        layers = []
+        current_dim = in_channels
+        
+        for i in range(num_layers - 1):
+            next_dim = max(1, hidden_channels // (2**i))
+            layers.append(nn.Linear(current_dim, next_dim))
+            layers.append(nn.ReLU())
+            layers.append(nn.Dropout(dropout))
+            current_dim = next_dim
+            
+        layers.append(nn.Linear(current_dim, 1))
+        self.mlp = nn.Sequential(*layers)
+
+    def _pair_features(
+        self,
+        x: torch.Tensor,
+        edge_pairs: torch.Tensor,
+        device: torch.device,
+    ) -> torch.Tensor:
+        x = x.to(device)
+        edge_pairs = edge_pairs.to(device)
+        u = edge_pairs[:, 0].long()
+        v = edge_pairs[:, 1].long()
+        xu = x.index_select(0, u)
+        xv = x.index_select(0, v)
+        return xu * xv
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor, edge_pairs: torch.Tensor) -> torch.Tensor:
+        device = next(self.parameters()).device
+        x = x.to(device)
+        scores = []
+        for start in range(0, edge_pairs.shape[0], self.pair_chunk_size):
+            stop = min(edge_pairs.shape[0], start + self.pair_chunk_size)
+            feats = self._pair_features(x, edge_pairs[start:stop], device)
+            scores.append(self.mlp(feats))
+        return torch.cat(scores, dim=0).reshape(-1)

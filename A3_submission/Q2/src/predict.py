@@ -14,6 +14,7 @@ import os
 
 import numpy as np
 import torch
+import models
 
 from load_dataset import COL761NodeDataset, COL761LinkDataset, load_dataset, _load_edge_list
 
